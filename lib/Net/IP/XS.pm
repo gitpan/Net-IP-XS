@@ -9,7 +9,7 @@ use Math::BigInt;
 use Tie::Hash::Sorted;
 use Tie::Simple;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 our $IP_NO_OVERLAP      = 0;
 our $IP_PARTIAL_OVERLAP = 1;
@@ -53,6 +53,13 @@ our @EXPORT_OK = qw(Error
                     $IP_A_IN_B_OVERLAP
                     $IP_B_IN_A_OVERLAP
                     $IP_IDENTICAL);
+
+our %EXPORT_TAGS = (PROC => [@EXPORT_OK]);
+
+use overload (
+    '+'    => 'ip_add_num',
+    'bool' => sub { @_ },
+);
 
 use base qw(DynaLoader Exporter);
 __PACKAGE__->bootstrap($VERSION);
@@ -384,7 +391,7 @@ version will not include any prefix length in the returned string
 
 =head1 AUTHOR
 
-Tom Harrison, C<< <tomhrr at cpan.org> >>
+Tom Harrison, C<< <tomhrr@cpan.org> >>
 
 =head1 BUGS
 

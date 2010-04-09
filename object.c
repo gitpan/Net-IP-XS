@@ -1299,6 +1299,140 @@ NI_overlaps(SV *ipo1, SV* ipo2, int *buf)
     }
 }
 
+/**
+ * NI_ip_add_num_ipv4(): add integer to object, get new range as string.
+ * @ipo: Net::IP::XS object.
+ * @num: integer to add to object.
+ * @buf: range buffer.
+ */
+int
+NI_ip_add_num_ipv4(SV *ipo, unsigned long num, char *buf)
+{
+    unsigned long begin;
+    unsigned long end;
+    int len;
+
+    begin  = NI_hv_get_uv(ipo, "xs_v4_ip0", 9);
+    end    = NI_hv_get_uv(ipo, "xs_v4_ip1", 9);
+
+    if ((0xFFFFFFFF - num) < begin) {
+        return 0;
+    }
+    if ((begin + num) > end) {
+        return 0;
+    }
+    
+    begin += num;
+    NI_ip_inttoip_ipv4(begin, buf);
+    len = strlen(buf);
+    sprintf(buf + len, " - ");
+    NI_ip_inttoip_ipv4(end, buf + len + 3);
+
+    return 1;
+}
+
+/**
+ * NI_ip_add_num_ipv6(): add integer to object, get new range as string.
+ * @ipo: Net::IP::XS object.
+ * @num: integer to add to object.
+ * @buf: range buffer.
+ */
+int
+NI_ip_add_num_ipv6(SV *ipo, mpz_t num, char *buf)
+{
+    mpz_t *begin;
+    mpz_t *end;
+    int len;
+
+    if (!NI_get_mpzs(ipo, &begin, &end)) {
+        return 0;
+    }
+
+    mpz_add(num, num, *begin);
+    
+    if (mpz_cmp(num, *end) > 0) {
+        return 0;
+    }
+    if (mpz_sizeinbase(num, 2) > 128) {
+        return 0;
+    }
+
+    NI_ip_inttoip_mpz(num, buf);
+    len = strlen(buf);
+    sprintf(buf + len, " - ");
+    NI_ip_inttoip_mpz(*end, buf + len + 3);
+
+    return 1;
+}
+
+/**
+ * NI_ip_add_num(): add integer to object and get new object.
+ * @ipo: Net::IP::XS object.
+ * @num: integer to add to object (as a string).
+ */
+SV *
+NI_ip_add_num(SV *ipo, const char *num)
+{
+    int version;
+    unsigned long num_ulong;
+    char *endptr;
+    mpz_t num_mpz;
+    char buf[(2 * (MAX_IPV6_STR_LEN - 1)) + 4];
+    int res;
+    HV *stash;
+    HV *hash;
+    SV *ref;
+    int iplen;
+    int size;
+
+    version = NI_hv_get_iv(ipo, "ipversion", 9);
+
+    if (version == 4) {
+        endptr = NULL;
+        num_ulong = strtoul(num, &endptr, 10);
+        if (STRTOUL_FAILED(num_ulong, num, endptr)) {
+            return 0;
+        }
+        if (num_ulong > 0xFFFFFFFF) {
+            return 0;
+        }
+        res = NI_ip_add_num_ipv4(ipo, num_ulong, buf);
+        if (!res) {
+            return 0;
+        }
+    } else if (version == 6) {
+        mpz_init2(num_mpz, 128);
+        mpz_set_str(num_mpz, num, 10);
+        size = mpz_sizeinbase(num_mpz, 2);
+
+        if ((size > 128) || (mpz_cmp_si(num_mpz, 0) < 0)) {
+            mpz_clear(num_mpz);
+            return 0;
+        }
+
+        res = NI_ip_add_num_ipv6(ipo, num_mpz, buf);
+        mpz_clear(num_mpz);
+        if (!res) {
+            return 0;
+        }
+    } else {
+        return 0;
+    }
+
+    hash  = newHV();
+    ref   = newRV_noinc((SV*) hash);
+    stash = gv_stashpv("Net::IP::XS", 1);
+    sv_bless(ref, stash);
+    res = NI_set(ref, buf, version);
+    if (!res) {
+        return NULL;
+    }
+
+    return ref;
+}
+
+/*
 #ifdef __cplusplus
 }
 #endif
+*/

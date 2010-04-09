@@ -38,7 +38,7 @@ if (not exists $output->{'EXTRALIBS'} or $output->{'EXTRALIBS'} !~ /gmp/) {
         unlink $output->{'MAKEFILE'};
     }
 
-    exit 1;
+    exit 0;
 }
 
 1;

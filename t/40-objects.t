@@ -427,7 +427,7 @@ my $object = bless \$str, 'not_net_ip_xs';
 $c->start();
 for (qw(binip prefixlen is_prefix ip version binmask last_bin
         print size intip hexip hexmask prefix mask iptype reverse_ip
-        last_int last_ip set_ipv6_mpzs)) {
+        last_int last_ip set_ipv6_mpzs ip_add_num)) {
     my $fn = "Net::IP::XS::$_";
     my $res = eval { $fn->($object) };
 }

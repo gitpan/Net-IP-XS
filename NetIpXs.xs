@@ -804,6 +804,23 @@ find_prefixes(self)
         }
 
 SV *
+ip_add_num(self, num, unused)
+        SV *self
+        char *num
+        SV *unused
+    PREINIT:
+        SV *new_ip;
+    CODE:
+        if (!sv_isa(self, "Net::IP::XS")) {
+            RETVAL = &PL_sv_undef;
+        } else {
+            new_ip = NI_ip_add_num(self, num);
+            RETVAL = (new_ip) ? new_ip : &PL_sv_undef;
+        }
+    OUTPUT:
+        RETVAL
+
+SV *
 set_ipv6_mpzs(self)
         SV *self
     PREINIT:

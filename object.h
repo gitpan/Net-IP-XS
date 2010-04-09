@@ -85,4 +85,8 @@ SV *NI_aggregate_ipv4(SV *ipo1, SV *ipo2);
 SV *NI_aggregate_ipv6(SV *ipo1, SV *ipo2);
 SV *NI_aggregate(SV *ipo1, SV *ipo2);
 
+int NI_ip_add_num_ipv4(SV *ipo, unsigned long num, char *buf);
+int NI_ip_add_num_ipv6(SV *ipo, mpz_t num, char *buf);
+SV *NI_ip_add_num(SV *ipo, const char *num);
+
 #endif
