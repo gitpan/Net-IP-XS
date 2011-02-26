@@ -4,7 +4,7 @@ use warnings;
 use strict;
 
 use blib;
-use Test::More tests => 16;
+use Test::More tests => 20;
 
 use Net::IP::XS qw(ip_compress_address Error Errno);
 
@@ -19,7 +19,11 @@ is($res, '1.2.3.4', 'Original IP address returned for IPv4');
 
 my @data = (
     ['0000:0000:0000:0000:0000:0000:0000:0000' => '::'],
-    ['ABCD:0000:EF01:0000:ABCD:0000:EF01:0000' => 'abcd::ef01:0:abcd:0:ef01:0'],
+    ['2001:db8:0:1:1:1:1:1'                    => '2001:db8:0:1:1:1:1:1'],
+    ['2001:db8:0:0:0:0:2:1'                    => '2001:db8::2:1'],
+    ['2001:0:0:1:0:0:0:1'                      => '2001:0:0:1::1'],
+    ['2001:db8:0:0:1:0:0:1'                    => '2001:db8::1:0:0:1'],
+    ['ABCD:0000:EF01:0000:ABCD:0000:EF01:0000' => 'abcd:0:ef01:0:abcd:0:ef01:0'],
     ['ABCD:0000:0000:0000:ABCD:0000:EF01:0000' => 'abcd::abcd:0:ef01:0'],
     ['ABCD:0000:0000:0000::0000:EF01:0000'     => 'abcd::ef01:0'],
     ['ABCD:0000:0000:0000:0000:0000:EF01:0000' => 'abcd::ef01:0'],

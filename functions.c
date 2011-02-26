@@ -2707,7 +2707,12 @@ NI_ip_compress_address(const char *ip, int version, char *buf)
     largest_index = -1;
 
     for (i = 0; i < 4; ++i) {
-        if (ws_count[i] > largest) {
+        /* "The symbol '::' MUST NOT be used to shorten just one 16-bit 0
+            field. For example, the representation 2001:db8:0:1:1:1:1:1 is
+            correct, but 2001:db8::1:1:1:1:1 is not correct"
+            (RFC 5952, [4.2.2]). So make sure that ws_count is greater
+            than 1. */
+        if (ws_count[i] > largest && ws_count[i] > 1) {
             largest       = ws_count[i];
             largest_index = i;
         }
