@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Net-IP-XS
-version:            0.03
+version:            0.04
 abstract:           XS implementation of Net::IP
 author:
     - Tom Harrison <tomhrr@cpan.org>

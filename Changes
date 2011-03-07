@@ -1,5 +1,9 @@
 Revision history for Net-IP-XS
 
+0.04    11 March 2011
+        - Use Devel::CheckLib when installing to see whether GMP 
+          is present.
+
 0.03    26 February 2011
         - Modified NI_ip_compress_address so that it does not use '::' 
           to shorten a single 16-bit 0 field (see RFC 5952).

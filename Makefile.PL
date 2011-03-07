@@ -1,7 +1,12 @@
 use strict;
 use warnings;
+
+use lib qw(inc);
+use Devel::CheckLib;
 use ExtUtils::MakeMaker;
 use ExtUtils::MakeMaker::Config;
+
+check_lib_or_exit(lib => 'gmp', header => 'gmp.h');
 
 my $output = WriteMakefile(
     NAME           => 'Net::IP::XS',
@@ -23,22 +28,5 @@ my $output = WriteMakefile(
                         'Test::More'          => 0,
                         'IO::Capture::Stderr' => 0 },
 );
-
-# Adapted from Math::GMP.
-
-if (not exists $output->{'EXTRALIBS'} or $output->{'EXTRALIBS'} !~ /gmp/) {
-    my $makefile_msg = 
-        exists $output->{'MAKEFILE'}
-            ? "\nRemoving ($output->{'MAKEFILE'})\n" 
-            : '';
-
-    warn qq(No GMP libraries detected!);
-    if ($makefile_msg) {
-        print $makefile_msg;
-        unlink $output->{'MAKEFILE'};
-    }
-
-    exit 0;
-}
 
 1;
