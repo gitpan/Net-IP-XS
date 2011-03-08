@@ -1,6 +1,10 @@
 Revision history for Net-IP-XS
 
-0.04    11 March 2011
+0.05    11 March 2011
+        - Missing 'return 0' statement on aggregation failure in the 
+          IPv6 aggregate object method.
+
+0.04    07 March 2011
         - Use Devel::CheckLib when installing to see whether GMP 
           is present.
 

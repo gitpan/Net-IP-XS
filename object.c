@@ -326,7 +326,7 @@ NI_set(SV* ipo, char *data, int ipversion)
     } else {
         res = NI_set_ipv6_mpzs(ipo);
         if (!res) {
-            return res;
+            return 0;
         }
     }
 
@@ -1184,6 +1184,7 @@ NI_aggregate_ipv6(SV *ipo1, SV *ipo2, char *buf)
     res = NI_ip_aggregate_ipv6(b1, e1, b2, e2, 6, buf);
     if (!res) {
         NI_copy_Error_Errno(ipo1);
+        return 0;
     }
 
     mpz_clear(b1);
