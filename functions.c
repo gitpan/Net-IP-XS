@@ -948,8 +948,8 @@ NI_ip_is_overlap(const char *begin_1, const char *end_1,
     b1_len = strlen(begin_1);
     b2_len = strlen(begin_2);
 
-    if (!(     (b1_len == strlen(end_1))
-            && (b2_len == strlen(end_2))
+    if (!(     (b1_len == (int) strlen(end_1))
+            && (b2_len == (int) strlen(end_2))
             && (b1_len == b2_len))) {
         NI_set_Error_Errno(130, "IP addresses of different length");
         return 0;
@@ -1387,7 +1387,7 @@ NI_ip_range_to_prefix_ipv4(unsigned long begin, unsigned long end,
     unsigned long current;
     unsigned long mask;
 
-    int zeroes;
+    unsigned long zeroes;
     int iplen;
     int res;
     int i;
@@ -1414,7 +1414,7 @@ NI_ip_range_to_prefix_ipv4(unsigned long begin, unsigned long end,
         zeroes = NI_trailing_zeroes(begin);
         mask = 0;
 
-        for (i = 0; i < zeroes; ++i) {
+        for (i = 0; i < (int) zeroes; ++i) {
             mask |= (1 << i);
         }
 
@@ -1474,9 +1474,9 @@ NI_ip_range_to_prefix_ipv6(mpz_t begin, mpz_t end,
 {
     mpz_t current;
     mpz_t mask;
-    int zeroes;
+    unsigned long zeroes;
     int iplen;
-    int res;
+    unsigned long res;
     int i;
     int prefix_length;
     char *new_prefix;
@@ -1503,7 +1503,7 @@ NI_ip_range_to_prefix_ipv6(mpz_t begin, mpz_t end,
         zeroes = (zeroes == ULONG_MAX) ? iplen : (zeroes - 1);
 
         mpz_set_ui(mask, 0);
-        for (i = 0; i < (zeroes + 1); ++i) {
+        for (i = 0; i < ((int) zeroes + 1); ++i) {
             mpz_setbit(mask, i);
         }
 
@@ -2660,7 +2660,6 @@ NI_ip_compress_v4_prefix(const char *ip, int len, char *buf, int maxlen)
 int
 NI_ip_compress_address(const char *ip, int version, char *buf)
 {
-    int ipversion;
     unsigned char ipv6[16];
     int i;
     char mybuf[5];

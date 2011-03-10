@@ -56,7 +56,7 @@ extern "C" {
  * @...: format arguments to substitute into @Error.
  */
 void
-NI_object_set_Error_Errno(SV *ipo, int Errno, char *Error, ...)
+NI_object_set_Error_Errno(SV *ipo, int Errno, const char *Error, ...)
 {
     char errtmp[512];
     va_list args;
@@ -1184,7 +1184,6 @@ NI_aggregate_ipv6(SV *ipo1, SV *ipo2, char *buf)
     res = NI_ip_aggregate_ipv6(b1, e1, b2, e2, 6, buf);
     if (!res) {
         NI_copy_Error_Errno(ipo1);
-        return 0;
     }
 
     mpz_clear(b1);
@@ -1192,7 +1191,7 @@ NI_aggregate_ipv6(SV *ipo1, SV *ipo2, char *buf)
     mpz_clear(b2);
     mpz_clear(e2);
 
-    return 1;
+    return res;
 }
 
 /**
@@ -1217,7 +1216,7 @@ NI_aggregate(SV *ipo1, SV *ipo2)
     }
 
     if (!res) {
-        return 0;
+        return NULL;
     }
 
     hash  = newHV();
@@ -1383,7 +1382,6 @@ NI_ip_add_num(SV *ipo, const char *num)
     HV *stash;
     HV *hash;
     SV *ref;
-    int iplen;
     int size;
 
     version = NI_hv_get_iv(ipo, "ipversion", 9);
@@ -1432,8 +1430,6 @@ NI_ip_add_num(SV *ipo, const char *num)
     return ref;
 }
 
-/*
 #ifdef __cplusplus
 }
 #endif
-*/

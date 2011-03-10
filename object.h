@@ -25,6 +25,10 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef NETIP_OBJECT
 #define NETIP_OBJECT
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "gmp.h"
 #include "limits.h"
 
@@ -88,5 +92,9 @@ SV *NI_aggregate(SV *ipo1, SV *ipo2);
 int NI_ip_add_num_ipv4(SV *ipo, unsigned long num, char *buf);
 int NI_ip_add_num_ipv6(SV *ipo, mpz_t num, char *buf);
 SV *NI_ip_add_num(SV *ipo, const char *num);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
