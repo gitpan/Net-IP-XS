@@ -9,7 +9,7 @@ use Math::BigInt;
 use Tie::Hash::Sorted;
 use Tie::Simple;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 our $IP_NO_OVERLAP      = 0;
 our $IP_PARTIAL_OVERLAP = 1;

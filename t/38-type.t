@@ -3,7 +3,6 @@
 use warnings;
 use strict;
 
-use blib;
 use Test::More tests => 10;
 
 use Net::IP::XS qw(ip_iptype ip_iptobin ip_expand_address);

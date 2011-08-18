@@ -3,7 +3,6 @@
 use warnings;
 use strict;
 
-use blib;
 use Test::More tests => 14;
 
 use Net::IP::XS qw(ip_check_prefix Error Errno);

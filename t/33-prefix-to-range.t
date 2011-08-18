@@ -3,7 +3,6 @@
 use warnings;
 use strict;
 
-use blib;
 use Test::More tests => 24;
 
 use Net::IP::XS qw(ip_prefix_to_range Error Errno);

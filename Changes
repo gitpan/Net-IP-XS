@@ -1,5 +1,10 @@
 Revision history for Net-IP-XS
 
+0.07    18 August 2011
+        - NI_ip_compress_v4_prefix now matches the behaviour of the
+          version from Net::IP (it was returning incorrect results
+          when the prefix length was not on an octet boundary).
+
 0.06    11 March 2011
         - Fixed 0.05 change (it led to a memory leak in NI_aggregate).
         - Now compiles when using a C++ compiler (tested with gcc-g++).

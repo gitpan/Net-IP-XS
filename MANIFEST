@@ -49,4 +49,6 @@ t/41-serialise.t
 t/42-tags.t
 t/43-ip-add-num-v4.t
 t/44-ip-add-num-v6.t
+t/45-short.t
+t/46-wrong-object.t
 META.yml                                 Module meta-data (added by MakeMaker)

@@ -3,7 +3,6 @@
 use warnings;
 use strict;
 
-use blib;
 use Test::More tests => 4;
 
 use Net::IP::XS qw(ip_iplengths);

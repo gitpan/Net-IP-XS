@@ -3,7 +3,6 @@
 use warnings;
 use strict;
 
-use blib;
 use Test::More tests => 20;
 
 use Net::IP::XS qw(ip_compress_address Error Errno);

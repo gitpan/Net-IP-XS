@@ -1393,7 +1393,6 @@ NI_ip_range_to_prefix_ipv4(unsigned long begin, unsigned long end,
     int i;
     int prefix_length;
     char *new_prefix;
-    char tempip[34];
     char range[4];
 
     current = 0;
@@ -1401,7 +1400,6 @@ NI_ip_range_to_prefix_ipv4(unsigned long begin, unsigned long end,
 
     iplen = NI_iplengths(version);
 
-    tempip[iplen] = '\0';
     *pcount = 0;
 
     while (begin <= end) {
@@ -2430,7 +2428,6 @@ NI_ip_normalize_plus_ipv6(char *ip, char *num,
                           char *ipbuf1, char *ipbuf2)
 {
     int res;
-    char *endptr;
     unsigned char ipnum[16];
     mpz_t ipv6;
     mpz_t addnum;
@@ -2444,8 +2441,6 @@ NI_ip_normalize_plus_ipv6(char *ip, char *num,
     mpz_init2(addnum, 128);
 
     NI_ip_uchars_to_mpz(ipnum, &ipv6);
-
-    endptr = NULL;
 
     res = mpz_set_str(addnum, num, 10);
     if ((res == -1) || (mpz_sizeinbase(addnum, 2) > 128)) {
@@ -2626,7 +2621,7 @@ NI_ip_compress_v4_prefix(const char *ip, int len, char *buf, int maxlen)
     }
 
     c = ip;
-    dotcount = (len == 0) ? 1 : (len / 8);
+    dotcount = (len == 0) ? 1 : ((len / 8) + (!(len % 8) ? 0 : 1));
     while (dotcount--) {
         c = strchr(c, '.');
         if (c == NULL) {
@@ -2851,7 +2846,6 @@ NI_ip_is_valid_mask(const char *mask, int version)
     int iplen;
     int mask_len;
     int state;
-    int ok;
 
     if (!version) {
         NI_set_Error_Errno(101, "Cannot determine IP version for %s",
@@ -2868,7 +2862,6 @@ NI_ip_is_valid_mask(const char *mask, int version)
     }
 
     state = 0;
-    ok    = 1;
     c     = mask;
 
     while (*c != '\0') {

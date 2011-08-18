@@ -3,7 +3,6 @@
 use warnings;
 use strict;
 
-use blib;
 use Test::More;
 
 # Ensure a recent version of Test::Pod

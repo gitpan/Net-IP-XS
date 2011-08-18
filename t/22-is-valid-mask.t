@@ -3,7 +3,6 @@
 use warnings;
 use strict;
 
-use blib;
 use Test::More tests => 16;
 
 use Net::IP::XS qw(ip_is_valid_mask Error Errno);

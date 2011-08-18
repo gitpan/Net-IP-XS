@@ -3,7 +3,6 @@
 use warnings;
 use strict;
 
-use blib;
 use Net::IP::XS;
 
 use Storable qw(freeze thaw);
