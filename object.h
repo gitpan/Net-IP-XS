@@ -1,7 +1,7 @@
 /*
 object.h - Functions for Net::IP::XS's object-oriented interface.
 
-Copyright (C) 2010 Tom Harrison <tomhrr@cpan.org>
+Copyright (C) 2010-2012 Tom Harrison <tomhrr@cpan.org>
 Original inet_pton4, inet_pton6 are Copyright (C) 2006 Free Software
 Foundation.
 Original interface, and the auth and ip_auth functions, are Copyright
@@ -29,7 +29,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 extern "C" {
 #endif
 
-#include "gmp.h"
 #include "limits.h"
 
 void NI_object_set_Error_Errno(SV *ipo, int Errno, char *Error, ...);
@@ -37,12 +36,12 @@ void NI_copy_Error_Errno(SV *ipo);
 
 int  NI_find_prefixes(SV *ipo, char **prefixes, int *pcount);
 
-int  NI_set_ipv6_mpzs(SV *ipo);
+int  NI_set_ipv6_n128s(SV *ipo);
 int  NI_set(SV* ip, char *data, int ipversion);
 
-int  NI_get_begin_mpz(SV *ipo, mpz_t **begin);
-int  NI_get_end_mpz(SV *ipo, mpz_t **end);
-int  NI_get_mpzs(SV *ipo, mpz_t **begin, mpz_t **end);
+int  NI_get_begin_n128(SV *ipo, n128_t **begin);
+int  NI_get_end_n128(SV *ipo, n128_t **end);
+int  NI_get_n128s(SV *ipo, n128_t **begin, n128_t **end);
 
 int  NI_short(SV *ipo, char *buf);
 int  NI_print(SV *ipo, char *buf, int maxlen);
@@ -90,7 +89,7 @@ SV *NI_aggregate_ipv6(SV *ipo1, SV *ipo2);
 SV *NI_aggregate(SV *ipo1, SV *ipo2);
 
 int NI_ip_add_num_ipv4(SV *ipo, unsigned long num, char *buf);
-int NI_ip_add_num_ipv6(SV *ipo, mpz_t num, char *buf);
+int NI_ip_add_num_ipv6(SV *ipo, n128_t *num, char *buf);
 SV *NI_ip_add_num(SV *ipo, const char *num);
 
 #ifdef __cplusplus

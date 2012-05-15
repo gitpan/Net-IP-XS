@@ -9,7 +9,7 @@ use Math::BigInt;
 use Tie::Hash::Sorted;
 use Tie::Simple;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 our $IP_NO_OVERLAP      = 0;
 our $IP_PARTIAL_OVERLAP = 1;
@@ -217,7 +217,7 @@ sub STORABLE_thaw
     @{$self}{@fields} = @{$copy}{@fields};
 
     if ($self->{'ipversion'} == 6) {
-        my $res = $self->set_ipv6_mpzs();
+        my $res = $self->set_ipv6_n128s();
         if (!$res) {
             die "Unable to generate internal IPv6 bignums.";
         }
@@ -254,8 +254,7 @@ Net::IP::XS - XS implementation of Net::IP
 
 An XS implementation of L<Net::IP|Net::IP>. See L<Net::IP|Net::IP>'s
 documentation (as at version 1.25) for the functions and methods that
-are available. Requires GMP (L<http://gmplib.org>), tested with
-versions 4.2.4 and 5.0.1. 
+are available.
 
 =head1 DIFFERENCES BETWEEN NET::IP AND NET::IP::XS
 
@@ -285,13 +284,15 @@ Returns C<undef> on failure, instead of dying.
 Returns C<undef> if either of the bitstring arguments is more than 128
 characters in length.
 
+Any character of the bitstring that is not a 0 is treated as a 1. The
+C<Net::IP> version returns different results for different digits, and
+treats non-digits as 0.
+
 =item ip_bintoint
 
-The integer returned will have a maximum length of 40 digits. This is
-the number of digits required to store the largest possible IPv6
-address. If the bitstring argument represents an integer containing
-more than 40 digits, the result integer will be truncated at 40
-digits.
+The integer returned will be at most ((1 << 128) - 1) (i.e. the
+largest possible IPv6 address). C<Net::IP> handles bitstrings of
+arbitrary length.
 
 =item ip_compress_address
 
@@ -330,14 +331,18 @@ If a negative C<len> is provided, it will be treated as zero.
 
 =item ip_inttobin
 
-The bitstring returned will always be less than or equal to 128
-characters in length, and it returns C<undef> if the integer argument
-would require more than 128 characters to represent as a bitstring.
-The C<Net::IP> version handles arbitrary integers.
+The bitstring returned will always be either 32 or 128 characters in
+length, and it returns C<undef> if the integer argument would require
+more than 128 characters to represent as a bitstring. If an invalid
+version is provided, the returned bitstring will be 128 characters in
+length. The C<Net::IP> version handles arbitrary integers and expands
+to accommodate those integers, regardless of the version argument.
+Also, if an invalid version is provided, the returned bitstring is
+only as long as is necessary to accommodate the bitstring.
 
 =item ip_iptobin
 
-Returns C<undef> on an invalid IPv4 address.
+Returns C<undef> on an invalid IPv4/IPv6 address.
 
 =item ip_last_address_bin
 
@@ -410,7 +415,7 @@ L<Net::IP|Net::IP>, L<IP::Authority|IP::Authority>.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright (C) 2010 Tom Harrison <tomhrr@cpan.org>.
+Copyright (C) 2010-2012 Tom Harrison <tomhrr@cpan.org>.
 
 Original inet_pton4 and inet_pton6 functions are copyright (C) 2006 
 Free Software Foundation.

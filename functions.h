@@ -1,7 +1,7 @@
 /*
 functions.h - Core functions for Net::IP::XS.
 
-Copyright (C) 2010 Tom Harrison <tomhrr@cpan.org>
+Copyright (C) 2010-2012 Tom Harrison <tomhrr@cpan.org>
 Original inet_pton4, inet_pton6 are Copyright (C) 2006 Free Software
 Foundation.
 Original interface, and the auth and ip_auth functions, are Copyright
@@ -25,8 +25,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #ifndef NETIP_FUNCTIONS
 #define NETIP_FUNCTIONS
 
-#include "gmp.h"
 #include "limits.h"
+#include "n128.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -83,12 +83,12 @@ int            NI_hdtoi(char c);
 int            NI_trailing_zeroes(unsigned long n);
 unsigned long  NI_bintoint(const char *bitstr, int len);
 unsigned long  NI_ip_uchars_to_ulong(unsigned char uchars[4]);
-void           NI_ip_uchars_to_mpz(unsigned char uchars[16], mpz_t *num);
+void           NI_ip_uchars_to_n128(unsigned char uchars[16], n128_t *num);
 
 int            NI_iplengths(int version);
 
-void           NI_ip_mpztobin(mpz_t num, int len, char *buf);
-void           NI_ip_bintompz(const char *bitstr, int len, mpz_t *num);
+void           NI_ip_n128tobin(n128_t *num, int len, char *buf);
+void           NI_ip_binton128(const char *bitstr, int len, n128_t *num);
 
 int            NI_ip_inttobin_str(const char *ip_int_str, 
                                   int version, char *buf);
@@ -99,7 +99,7 @@ int            NI_ip_is_ipv6(const char *str);
 int            NI_ip_get_version(const char *str);
 int            NI_ip_get_mask(int len, int version, char *buf);
 
-int            NI_ip_last_address_ipv6(mpz_t ip, int len, mpz_t *buf);
+int            NI_ip_last_address_ipv6(n128_t *ip, int len, n128_t *buf);
 unsigned long  NI_ip_last_address_ipv4(unsigned long ip, int len);
 int            NI_ip_last_address_bin(const char *bitstr, int len, 
                                       int version, char *buf);
@@ -107,8 +107,8 @@ int            NI_ip_last_address_bin(const char *bitstr, int len,
 int            NI_ip_bincomp(const char *bitstr_1, const char *op_str, 
                              const char *bitstr_2, int *result);
 
-void           NI_ip_is_overlap_ipv6(mpz_t begin_1, mpz_t end_1,
-                                     mpz_t begin_2, mpz_t end_2, int *result);
+void           NI_ip_is_overlap_ipv6(n128_t *begin_1, n128_t *end_1,
+                                     n128_t *begin_2, n128_t *end_2, int *result);
 void           NI_ip_is_overlap_ipv4(unsigned long begin_1, 
                                      unsigned long end_1,
                                      unsigned long begin_2, 
@@ -118,11 +118,11 @@ int            NI_ip_is_overlap(const char *begin_1, const char *end_1,
                                 const char *begin_2, const char *end_2, 
                                 int *result);
 
-int            NI_ip_check_prefix_ipv6(mpz_t ip, int len);
+int            NI_ip_check_prefix_ipv6(n128_t *ip, int len);
 int            NI_ip_check_prefix_ipv4(unsigned long ip, int len);
 int            NI_ip_check_prefix(const char *bitstr, int len, int version);
 
-void           NI_ip_get_prefix_length_ipv6(mpz_t mpz_1, mpz_t mpz_2, 
+void           NI_ip_get_prefix_length_ipv6(n128_t *n128_1, n128_t *n128_2, 
                                             int bits, int *len);
 void           NI_ip_get_prefix_length_ipv4(unsigned long begin, 
                                             unsigned long end,
@@ -135,13 +135,13 @@ void           NI_ip_inttoip_ipv6(unsigned long n1, unsigned long n2,
                                   unsigned long n3, unsigned long n4, 
                                   char *buf);
 void           NI_ip_inttoip_ipv4(unsigned long n, char *buf);
-void           NI_ip_inttoip_mpz(mpz_t ip, char *buf);
+void           NI_ip_inttoip_n128(n128_t *ip, char *buf);
 int            NI_ip_bintoip(const char *bitstr, int version, char *buf);
 
 int            NI_ip_binadd(const char *first, const char *second, 
                             char *buf, int maxlen);
 
-int            NI_ip_range_to_prefix_ipv6(mpz_t begin, mpz_t end,
+int            NI_ip_range_to_prefix_ipv6(n128_t *begin, n128_t *end,
                                           int version, char **prefixes, 
                                           int *pcount);
 int            NI_ip_range_to_prefix_ipv4(unsigned long begin, 
@@ -155,7 +155,7 @@ int            NI_ip_range_to_prefix(const char *bitstr_1,
 
 int            NI_ip_aggregate_tail(int res, char **prefixes, int pcount,
                                     int version, char *buf);
-int            NI_ip_aggregate_ipv6(mpz_t b1, mpz_t e1, mpz_t b2, mpz_t e2,
+int            NI_ip_aggregate_ipv6(n128_t *b1, n128_t *e1, n128_t *b2, n128_t *e2,
                                     int ipversion, char *buf);
 int            NI_ip_aggregate_ipv4(unsigned long b1, unsigned long e1,
                                     unsigned long b2, unsigned long e2,
@@ -174,7 +174,7 @@ int            NI_ip_reverse_ipv6(const char *ip, int len, char *buf);
 int            NI_ip_reverse_ipv4(const char *ip, int len, char *buf);
 int            NI_ip_reverse(const char *ip, int len, int ipversion, char *buf);
 
-int            NI_ip_normalize_prefix_ipv6(mpz_t ip, char *slash,
+int            NI_ip_normalize_prefix_ipv6(n128_t *ip, char *slash,
                                            char *ip1buf, char *ip2buf);
 int            NI_ip_normalize_prefix_ipv4(unsigned long ip, char *slash,
                                            char *ip1buf, char *ip2buf);

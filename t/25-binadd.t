@@ -18,7 +18,7 @@ is(Errno(), 130, 'Got correct errno');
 my @data = (
     [ undef, undef, '' ],
     [ '', '', '' ],
-    [ 'abcd', 'edfh', '0000' ],
+    [ 'abcd', 'edfh', '1110' ],
     [ qw(0 0 0) ],
     [ qw(1 1 0) ],
     [ qw(1010 0101 1111) ],
@@ -42,7 +42,7 @@ for (@data) {
     }
     my $res = ip_binadd($first, $second);
     if (not defined $first or not defined $second) {
-        $c->start();
+        $c->stop();
     }
     for ($first, $second) {
         defined $_ or $_ = 'undef';

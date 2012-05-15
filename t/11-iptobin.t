@@ -3,9 +3,9 @@
 use warnings;
 use strict;
 
-use Test::More tests => 18;
+use Test::More tests => 21;
 
-use Net::IP::XS qw(ip_iptobin Error Errno);
+use Net::IP::XS qw(ip_iptobin Error Errno ip_bintoip);
 
 my $str = ip_iptobin('000.000.000.000', 4);
 is($str, undef, 'Got undef on bad IPv4 address (1)');
@@ -55,6 +55,24 @@ $str = ip_iptobin('1234', 6);
 is($str, undef, 'ip_iptobin invalid');
 is(Error(), 'Bad IP address 1234', 'Correct error');
 is(Errno(), 102, 'Correct errno');
+
+$str = ip_iptobin(
+    'A\CD:E<FG:A=DF:QWER:zx$v:qwer:asdf:zxcv',
+    6
+);
+is($str, undef, 'ip_iptobin invalid');
+
+$str = ip_iptobin(
+    'ABCD:1234:A=DF:QWER:zx$v:qwer:asdf:zxcv',
+    6
+);
+is($str, undef, 'ip_iptobin invalid');
+
+$str = ip_iptobin(
+    'ABCD:1234:A!DF:QWER:zx$v:qwer:asdf:zxcv',
+    6
+);
+is($str, undef, 'ip_iptobin invalid');
 
 # Make sure version is treated as 6 if it is not 4.
 

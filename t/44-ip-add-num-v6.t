@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 16;
+use Test::More tests => 18;
 
 use Net::IP::XS qw(:PROC);
 
@@ -44,11 +44,20 @@ while ($ip = $ip + '1000000000000000000000000000000000000') {
 is($count, 340, 'Addition failed at correct point');
 
 $ip = Net::IP::XS->new('::/0');
+$ip += '340282366920938463463374607431768211456';
+is($ip, undef, 'Got undef on trying to add a number that is too large (1)');
+
+$ip = Net::IP::XS->new('::/0');
 $ip += '9' x 256;
 is($ip, undef, 'Got undef on trying to add a number that is too large');
 
 $ip = Net::IP::XS->new('::/128');
 $ip += -1;
-is($ip, undef, 'Got undef of trying to add negative number');
+is($ip, undef, 'Got undef on trying to add negative number');
+
+$ip = Net::IP::XS->new('::/0');
+$ip += '340282366920938463463374607431768211455';
+is($ip->ip(), 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff',
+    'IP set correctly (added largest possible integer');
 
 1;

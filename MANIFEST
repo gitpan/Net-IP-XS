@@ -1,9 +1,10 @@
-inc/Devel/CheckLib.pm
 Changes
 functions.c
 functions.h
 inet_pton.c
 inet_pton.h
+n128.c
+n128.h
 lib/Net/IP/XS.pm
 LICENSE
 Makefile.PL
@@ -51,4 +52,5 @@ t/43-ip-add-num-v4.t
 t/44-ip-add-num-v6.t
 t/45-short.t
 t/46-wrong-object.t
-META.yml                                 Module meta-data (added by MakeMaker)
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

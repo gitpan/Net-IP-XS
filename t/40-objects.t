@@ -294,7 +294,7 @@ is($ip, undef, "Got undef IP object on bad version");
 
 $ip = Net::IP::XS->new('2000::');
 delete $ip->{'xs_v6_ip1'};
-is($ip->overlaps($ip), undef, 'Got undef where second GMP integer deleted');
+is($ip->overlaps($ip), undef, 'Got undef where second N128 integer deleted');
 
 my $ip1 = Net::IP::XS->new('0000::');
 $ip2 = Net::IP::XS->new('1111::');
@@ -331,7 +331,7 @@ $ip2 = Net::IP::XS->new('1111::');
 delete $ip2->{'xs_v6_ip0'};
 delete $ip2->{'xs_v6_ip1'};
 is($ip1->overlaps($ip2), undef, "overlaps depends on second ".
-                                "object's GMP integers");
+                                "object's N128 integers");
 
 $ip1 = Net::IP::XS->new('0000::');
 $ip2 = Net::IP::XS->new('1111::');
@@ -345,14 +345,14 @@ $ip2 = Net::IP::XS->new('1111::');
 delete $ip1->{'xs_v6_ip0'};
 delete $ip1->{'xs_v6_ip1'};
 is($ip1->aggregate($ip2), undef, "aggregate depends on first ".
-                                 "object's GMP integers");
+                                 "object's N128 integers");
 
 $ip1 = Net::IP::XS->new('0000::');
 $ip2 = Net::IP::XS->new('1111::');
 delete $ip2->{'xs_v6_ip0'};
 delete $ip2->{'xs_v6_ip1'};
 is($ip1->aggregate($ip2), undef, "aggregate depends on second ".
-                                 "object's GMP integers");
+                                 "object's N128 integers");
 
 $ip1 = Net::IP::XS->new('0000::');
 $ip2 = Net::IP::XS->new('1111::');
@@ -361,19 +361,19 @@ is($ip1->aggregate($ip2), undef, "aggregate failed");
 $ip1 = Net::IP::XS->new('0000::');
 delete $ip1->{'xs_v6_ip0'};
 delete $ip1->{'xs_v6_ip1'};
-is($ip1->size(), 0, 'Got zero for size where GMP integers deleted');
+is($ip1->size(), 0, 'Got zero for size where N128 integers deleted');
 
 $ip1 = Net::IP::XS->new('1111::');
 delete $ip1->{'intformat'};
 delete $ip1->{'xs_v6_ip0'};
 delete $ip1->{'xs_v6_ip1'};
-is($ip1->size(), 0, 'Got zero for intip where GMP integers deleted');
+is($ip1->size(), 0, 'Got zero for intip where N128 integers deleted');
 
 $ip1 = Net::IP::XS->new('1111::');
 delete $ip1->{'hexformat'};
 delete $ip1->{'xs_v6_ip0'};
 delete $ip1->{'xs_v6_ip1'};
-is($ip1->hexip(), undef, 'Got undef for hexip where GMP integers deleted');
+is($ip1->hexip(), undef, 'Got undef for hexip where N128 integers deleted');
 
 $ip1 = Net::IP::XS->new('::1');
 delete $ip1->{'last_int'};
@@ -382,7 +382,7 @@ is($ip1->last_int(), 1, 'Got correct last_int where cached value deleted');
 $ip1 = Net::IP::XS->new('::1');
 delete $ip1->{'last_int'};
 delete $ip1->{'xs_v6_ip1'};
-is($ip1->last_int(), 0, 'Got zero last_int where GMP integer and '.
+is($ip1->last_int(), 0, 'Got zero last_int where N128 integer and '.
                         'cached value deleted');
 
 # Use an empty hashref for the object, make sure all methods bar mask
@@ -426,7 +426,7 @@ my $object = bless \$str, 'not_net_ip_xs';
 $c->start();
 for (qw(binip prefixlen is_prefix ip version binmask last_bin
         print size intip hexip hexmask prefix mask iptype reverse_ip
-        last_int last_ip set_ipv6_mpzs ip_add_num)) {
+        last_int last_ip ip_add_num)) {
     my $fn = "Net::IP::XS::$_";
     my $res = eval { $fn->($object) };
 }

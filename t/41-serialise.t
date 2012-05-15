@@ -29,10 +29,10 @@ use Scalar::Util qw(blessed);
     close $fh;
     $ip = thaw($con);
     ok(exists $ip->{'xs_v6_ip0'}, 'First number is present');
-    isa_ok($ip->{'xs_v6_ip0'}, 'Net::IP::XS::GN', 
+    isa_ok($ip->{'xs_v6_ip0'}, 'Net::IP::XS::N128', 
         'First number has correct class');
     ok(exists $ip->{'xs_v6_ip1'}, 'Second number is present');
-    isa_ok($ip->{'xs_v6_ip1'}, 'Net::IP::XS::GN', 
+    isa_ok($ip->{'xs_v6_ip1'}, 'Net::IP::XS::N128', 
         'Second number has correct class');
     is($ip->size(), 
     '340282366920938463463374607431768211456', 
@@ -60,11 +60,11 @@ use Scalar::Util qw(blessed);
     {
         no warnings;
         no strict 'refs';
-        *{'Net::IP::XS::set_ipv6_mpzs'} = sub { 0 };
+        *{'Net::IP::XS::set_ipv6_n128s'} = sub { 0 };
     }
 
     $ip = eval { thaw($con) };
-    ok($@, 'Died when unable to set IPv6 GMP integers');
+    ok($@, 'Died when unable to set IPv6 N128 integers');
 }
 
 {

@@ -9,8 +9,6 @@ To install this module, run the following commands:
 	make test
 	make install
 
-GMP (http://gmplib.org) must be installed for this to build properly.
-
 SUPPORT AND DOCUMENTATION
 
 After installing, you can find documentation for this module with the
@@ -35,7 +33,7 @@ You can also look for information at:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2010 Tom Harrison <tomhrr@cpan.org>.
+Copyright (C) 2010-2012 Tom Harrison <tomhrr@cpan.org>.
 
 Original inet_pton4 and inet_pton6 functions are copyright (C) 2006
 Free Software Foundation.

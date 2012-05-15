@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 18;
+use Test::More tests => 22;
 
 use Net::IP::XS qw(ip_aggregate ip_iptobin
                    Error Errno);
@@ -32,7 +32,7 @@ is(Error(), "Ranges not contiguous - $addr - $addr",
 is(Errno(), 160, 'Got correct errno');
 
 $addr = ip_iptobin((join ':', ('0000') x 8), 6);
-$res = ip_aggregate($addr, $addr, $addr, $addr, 4);
+$res = ip_aggregate($addr, $addr, $addr, $addr, 6);
 is($res, undef, 'Got undef on non-contiguous ranges');
 is(Error(), "Ranges not contiguous - $addr - $addr",
     'Got correct error');
@@ -51,6 +51,9 @@ is(Errno(), 161, 'Got correct errno');
 
 my @data = (
     [ qw(127.0.0.0    127.0.0.255
+         127.0.1.0    124.0.0.255
+         4            undef) ],
+    [ qw(127.0.0.0    127.0.0.255
          127.0.1.0    127.0.3.255
          4            127.0.0.0/22) ],
     [ qw(127.0.0.0    127.0.0.1
@@ -59,13 +62,37 @@ my @data = (
     [ qw(0.0.0.0      127.255.255.255
          128.0.0.0    255.255.255.255
          4            0.0.0.0/0) ],
-    [ (join ':', ('0000') x 8),         (join ':', '0000', ('ffff') x 7),
-      (join ':', '0001', ('0000') x 7), (join ':', '0001', ('ffff') x 7),
-      6, (join ':', ('0000') x 8).'/15' ],
+    [ '0000:0000:0000:0000:0000:0000:1234:0000',
+      '0000:0000:0000:0000:0000:0000:1234:00FF',
+      '0000:0000:0000:0000:0000:0000:1234:0100',
+      '0000:0000:0000:0000:0000:0000:1234:01FF',
+      6,
+      '0000:0000:0000:0000:0000:0000:1234:0000/119' ],
+    [ '0000:0000:0000:0000:0000:0000:0000:0000',
+      '0000:0000:0000:0000:0000:0000:0000:0001',
+      '0000:0000:0000:0000:0000:0000:0000:0002',
+      '0000:0000:0000:0000:0000:0000:0000:0003',
+      6,
+      '0000:0000:0000:0000:0000:0000:0000:0000/126' ],
+    [ '0000:0000:0000:0000:0000:0000:0000:0000',
+      '7fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff',
+      '8000:0000:0000:0000:0000:0000:0000:0000',
+      'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff',
+      6,
+      '0000:0000:0000:0000:0000:0000:0000:0000/0' ],
+    [ '0000:0000:0000:0000:0000:0000:0000:0000',
+      '0000:ffff:ffff:ffff:ffff:ffff:ffff:ffff',
+      '0001:0000:0000:0000:0000:0000:0000:0000',
+      '0001:ffff:ffff:ffff:ffff:ffff:ffff:ffff',
+      6,
+      '0000:0000:0000:0000:0000:0000:0000:0000/15' ],
 );
 
 for (@data) {
     my ($b1, $e1, $b2, $e2, $version, $res_exp) = @{$_};
+    if ($res_exp eq 'undef') {
+        $res_exp = undef;
+    }
     my $res = ip_aggregate(ip_iptobin($b1, $version),
                            ip_iptobin($e1, $version),
                            ip_iptobin($b2, $version),

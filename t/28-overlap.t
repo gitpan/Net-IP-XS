@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 23;
+use Test::More tests => 33;
 
 use Net::IP::XS qw(ip_is_overlap
                    ip_iptobin
@@ -15,13 +15,19 @@ use Net::IP::XS qw(ip_is_overlap
                    $IP_B_IN_A_OVERLAP
                    $IP_IDENTICAL);
 
-my $res = ip_is_overlap('1', '12', '123', '1234');
-is($res, undef, 'Got no result on strings of different lengths');
-is(Error(), 'IP addresses of different length',
-    'Got correct error');
-is(Errno(), 130, 'Got correct errno');
+my $c = 1;
+for my $det ([qw(1 12 123 1234)],
+             [qw(1  1 123 1234)],
+             [qw(1  1  12   12)]) {
+    my ($b1, $e1, $b2, $e2) = @{$det}; 
+    my $res = ip_is_overlap($b1, $e1, $b2, $e2);
+    is($res, undef, "Got no result on strings of different lengths ($c)");
+    is(Error(), 'IP addresses of different length',
+        'Got correct error');
+    is(Errno(), 130, 'Got correct errno');
+}
 
-$res = ip_is_overlap('1', '0', '0', '0');
+my $res = ip_is_overlap('1', '0', '0', '0');
 is($res, undef, 'Got no result on bad range (1)');
 is(Error(), 'Invalid range 1 - 0',
     'Got correct error');
@@ -39,6 +45,9 @@ my @data = (
          4),          $IP_NO_OVERLAP ],
     [ qw(127.0.0.1    128.0.0.0
          128.0.0.0    128.0.0.255
+         4),          $IP_PARTIAL_OVERLAP ],
+    [ qw(127.0.0.1    128.0.0.0
+         127.0.0.0    127.255.255.255
          4),          $IP_PARTIAL_OVERLAP ],
     [ qw(127.0.0.1    129.0.0.0
          128.0.0.0    129.0.0.0
@@ -61,6 +70,9 @@ my @data = (
     [ (join ':', ('0000') x 8), (join ':', ('1111') x 8),
       (join ':', ('1111') x 8), (join ':', ('3333') x 8),
       6,              $IP_PARTIAL_OVERLAP ],
+    [ (join ':', ('0000') x 8), (join ':', ('5555') x 8),
+      (join ':', ('1111') x 8), (join ':', ('3333') x 8),
+      6,              $IP_B_IN_A_OVERLAP ],
     [ (join ':', ('1111') x 8), (join ':', ('3333') x 8),
       (join ':', ('0000') x 8), (join ':', ('1111') x 8),
       6,              $IP_PARTIAL_OVERLAP ],
@@ -73,6 +85,12 @@ my @data = (
     [ (join ':', ('0000') x 8), (join ':', ('3333') x 8),
       (join ':', ('1111') x 8), (join ':', ('3333') x 8),
       6,              $IP_B_IN_A_OVERLAP ],
+    [ (join ':', ('0000') x 8), (join ':', ('3333') x 8),
+      (join ':', ('1111') x 8), (join ':', ('4444') x 8),
+      6,              $IP_PARTIAL_OVERLAP ],
+    [ (join ':', ('1111') x 8), (join ':', ('3333') x 8),
+      (join ':', ('0000') x 8), (join ':', ('4444') x 8),
+      6,              $IP_A_IN_B_OVERLAP ],
     [ (join ':', ('0000') x 8), (join ':', ('ffff') x 8),
       (join ':', ('0000') x 8), (join ':', ('ffff') x 8),
       6,              $IP_IDENTICAL ],

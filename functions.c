@@ -1,7 +1,7 @@
 /*
 functions.c - Core functions for Net::IP::XS.
 
-Copyright (C) 2010 Tom Harrison <tomhrr@cpan.org>
+Copyright (C) 2010-2012 Tom Harrison <tomhrr@cpan.org>
 Original inet_pton4, inet_pton6 are Copyright (C) 2006 Free Software
 Foundation.
 Original interface, and the auth and ip_auth functions, are Copyright
@@ -170,26 +170,25 @@ NI_set_Error_Errno(int Errno, const char *Error, ...)
 }
 
 /**
- * NI_ip_uchars_to_mpz(): make GMP integer from array of chars.
+ * NI_ip_uchars_to_n128(): make N128 integer from array of chars.
  * @uchars: array of at least 16 unsigned chars.
- * @buf: GMP integer buffer.
+ * @buf: N128 integer buffer.
  */
 void
-NI_ip_uchars_to_mpz(unsigned char uchars[16], mpz_t *num)
+NI_ip_uchars_to_n128(unsigned char uchars[16], n128_t *num)
 {
     int i;
-    mpz_t mask;
+    int j;
+    unsigned long k;
 
-    mpz_init2(mask, 128);
-    mpz_set_ui(*num, 0);
-
-    for (i = 0; i < 16; ++i) {
-        mpz_mul_2exp(*num, *num, 8);
-        mpz_set_ui(mask, uchars[i] & 0xFF);
-        mpz_ior(*num, *num, mask);
+    for (i = 0; i < 4; i++) {
+        j = i * 4;
+        k = (  (uchars[j + 3])
+             | (uchars[j + 2] << 8)
+             | (uchars[j + 1] << 16)
+             | (uchars[j]     << 24));
+        num->nums[i] = k;
     }
-
-    mpz_clear(mask);
 }
 
 /**
@@ -237,7 +236,7 @@ NI_trailing_zeroes(unsigned long n)
     }
 
     n = (n ^ (n - 1)) >> 1;
-    for (c = 0; n; ++c) {
+    for (c = 0; n; c++) {
         n >>= 1;
     }
 
@@ -259,7 +258,7 @@ NI_bintoint(const char *bitstr, int len)
     res  = 0;
     help = len - 1;
 
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i++) {
         res += (((unsigned long) (bitstr[i] == '1')) << (help - i));
     }
 
@@ -285,7 +284,7 @@ NI_bintoint_nonzero(const char *bitstr, int len)
     res  = 0;
     help = len - 1;
 
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i++) {
         res += (((unsigned long) (bitstr[i] != '0')) << (help - i));
     }
 
@@ -309,20 +308,24 @@ NI_iplengths(int version)
 }
 
 /**
- * NI_ip_mpztobin(): make bitstring from GMP integer.
- * @num: GMP integer.
+ * NI_ip_n128tobin(): make bitstring from N128 integer.
+ * @num: N128 integer.
  * @len: the number of bits to write to the buffer.
  * @buf: the bitstring buffer.
  *
  * This does not null-terminate the buffer.
  */
 void
-NI_ip_mpztobin(mpz_t num, int len, char *buf)
+NI_ip_n128tobin(n128_t *num, int len, char *buf)
 {
     int i;
 
-    for (i = 0; i < len; ++i) {
-        buf[len - 1 - i] = (mpz_tstbit(num, i) ? '1' : '0');
+    if (len == 0) {
+        return;
+    }
+
+    for (i = 0; i < len; i++) {
+        buf[len - 1 - i] = (n128_tstbit(num, i) ? '1' : '0');
     }
 }
 
@@ -339,9 +342,10 @@ NI_ip_mpztobin(mpz_t num, int len, char *buf)
 int
 NI_ip_inttobin_str(const char *ip_int_str, int version, char *buf)
 {
-    mpz_t num;
-    size_t len;
-    size_t size;
+    n128_t num;
+    int i;
+    int len;
+    int res;
 
     if (!version) {
         NI_set_Error_Errno(101, "Cannot determine IP "
@@ -349,52 +353,24 @@ NI_ip_inttobin_str(const char *ip_int_str, int version, char *buf)
         return 0;
     }
 
-    len = NI_iplengths(version);
+    len = strlen(ip_int_str);
+    for (i = 0; i < len; i++) {
+        if (!isdigit(ip_int_str[i])) {
+            memset(buf, '0', (version == 4) ? 32 : 128);
+            buf[(version == 4) ? 32 : 128] = '\0';
+            return 1;
+        }
+    }
 
-    mpz_init(num);
-    mpz_set_str(num, ip_int_str, 10);
-    size = mpz_sizeinbase(num, 2);
-    if ((len > 0) && (size < len)) {
-        memset(buf, '0', (len - size));
-        buf += (len - size);
-    } else if (size > 128) {
-        mpz_clear(num);
+    n128_set_ui(&num, 0);
+    res = n128_set_str_decimal(&num, ip_int_str, strlen(ip_int_str));
+    if (!res) {
         return 0;
     }
-    mpz_get_str(buf, 2, num);
-    mpz_clear(num);
+
+    n128_print_bin(&num, buf, (version == 4));
 
     return 1;
-}
-
-/**
- * NI_ip_bintompz(): make GMP integer from bitstring.
- * @bitstr: the bitstring to convert.
- * @len: the length of the bitstring.
- * @num: a pointer to an initialised GMP integer (mpz).
- * 
- * The reason for using this instead of mpz_set_str() is that this
- * function treats all non-zero characters as '1' (like the
- * original), whereas mpz_set_str() requires a valid bitstring.
- */
-void
-NI_ip_bintompz(const char *bitstr, int len, mpz_t *num)
-{
-    mpz_t add;
-    int i;
-
-    mpz_init(add);
-    mpz_set_ui(add, 1);
-    mpz_set_ui(*num, 0);
-
-    for (i = len - 1; i >= 0; i--) {
-        if (bitstr[i] != '0') {
-            mpz_add(*num, *num, add);
-        }
-        mpz_mul_ui(add, add, 2);
-    }
-
-    mpz_clear(add);
 }
 
 /**
@@ -406,7 +382,7 @@ int
 NI_ip_bintoint_str(const char *bitstr, char *buf)
 {
     unsigned long num_ulong;
-    mpz_t num_mpz;
+    n128_t num_n128;
     int len;
 
     len = strlen(bitstr);
@@ -417,13 +393,10 @@ NI_ip_bintoint_str(const char *bitstr, char *buf)
         return 1;
     }
 
-    mpz_init2(num_mpz, len);
-    mpz_set_ui(num_mpz, 0);
+    n128_set_ui(&num_n128, 0);
 
-    NI_ip_bintompz(bitstr, len, &num_mpz);
-    gmp_snprintf(buf, MAX_IPV6_NUM_STR_LEN, "%Zd", num_mpz);
-
-    mpz_clear(num_mpz);
+    n128_set_str_binary(&num_n128, bitstr, len);
+    n128_print_dec(&num_n128, buf);
 
     return 1;
 }
@@ -447,7 +420,7 @@ NI_ip_is_ipv4(const char *str)
 
     /* Contains invalid characters. */
 
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i++) {
         if (!isdigit(str[i]) && str[i] != '.') {
             NI_set_Error_Errno(107, "Invalid chars in IP %s", str);
             return 0;
@@ -466,11 +439,11 @@ NI_ip_is_ipv4(const char *str)
         return 0;
     }
 
-    /* Contains more that four quads (octets). */
+    /* Contains more than four quads (octets). */
 
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i++) {
         if (str[i] == '.') {
-            ++quads;
+            quads++;
             quadspots[quads - 1] = i + 1;
         }
         if (quads > 3) {
@@ -481,7 +454,7 @@ NI_ip_is_ipv4(const char *str)
 
     /* Contains an empty quad. */
 
-    for (i = 0; i < (len - 1); ++i) {
+    for (i = 0; i < (len - 1); i++) {
         if ((str[i] == '.') && (str[i + 1] == '.')) {
             NI_set_Error_Errno(106, "Empty quad in IP address %s", str);
             return 0;
@@ -490,7 +463,7 @@ NI_ip_is_ipv4(const char *str)
 
     /* Contains an invalid quad value. */
 
-    for (cq_index = 0; cq_index <= quads; ++cq_index) {
+    for (cq_index = 0; cq_index <= quads; cq_index++) {
         i = (cq_index > 0) ? (quadspots[cq_index - 1]) : 0;
 
         endptr = NULL;
@@ -529,7 +502,7 @@ NI_ip_is_ipv6(const char *str)
     /* Store a pointer to the next character after each ':' in
      * octspots. */
 
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i++) {
         if (str[i] == ':') {
             octspots[octs++] = i + 1;
             if (octs > 8) {
@@ -542,7 +515,7 @@ NI_ip_is_ipv6(const char *str)
         return 0;
     }
 
-    for (oct_index = 0; oct_index <= octs; ++oct_index) {
+    for (oct_index = 0; oct_index <= octs; oct_index++) {
         i = (oct_index > 0) ? (octspots[oct_index - 1]) : 0;
 
         /* Empty octet. */
@@ -576,10 +549,10 @@ NI_ip_is_ipv6(const char *str)
                 is_hd = 0;
                 break;
             }
-            ++cc;
+            cc++;
         }
 
-        if (is_hd && ((count >= 1) && (count <= 4))) {
+        if (is_hd && (count <= 4)) {
             continue;
         }
 
@@ -673,19 +646,19 @@ NI_ip_get_mask(int len, int version, char *buf)
  * NI_ip_last_address_ipv6(): get last address of prefix.
  * @ip: the beginning IP address.
  * @len: the prefix length.
- * @buf: GMP integer buffer for the last address.
+ * @buf: N128 integer buffer for the last address.
  */
 int
-NI_ip_last_address_ipv6(mpz_t ip, int len, mpz_t *buf)
+NI_ip_last_address_ipv6(n128_t *ip, int len, n128_t *buf)
 {
     int i;
 
-    mpz_set(*buf, ip);
+    memcpy(buf, ip, sizeof(*ip));
 
     len = (len == 0) ? 128 : (128 - len);
 
-    for (i = 0; i < len; ++i) {
-        mpz_setbit(*buf, i);
+    for (i = 0; i < len; i++) {
+        n128_setbit(buf, i);
     }
 
     return 1;
@@ -805,49 +778,49 @@ NI_ip_bincomp(const char *bitstr_1, const char *op_str,
  * @result: a pointer to an integer.
  */
 void
-NI_ip_is_overlap_ipv6(mpz_t begin_1, mpz_t end_1,
-                      mpz_t begin_2, mpz_t end_2, int *result)
+NI_ip_is_overlap_ipv6(n128_t *begin_1, n128_t *end_1,
+                      n128_t *begin_2, n128_t *end_2, int *result)
 {
     int res;
 
-    if (!mpz_cmp(begin_1, begin_2)) {
-        if (!mpz_cmp(end_1, end_2)) {
+    if (!n128_cmp(begin_1, begin_2)) {
+        if (!n128_cmp(end_1, end_2)) {
             *result = IP_IDENTICAL;
             return;
         }
-        res = mpz_cmp(end_1, end_2);
+        res = n128_cmp(end_1, end_2);
         *result = (res < 0) ? IP_A_IN_B_OVERLAP
                             : IP_B_IN_A_OVERLAP;
         return;
     }
 
-    if (!mpz_cmp(end_1, end_2)) {
-        res = mpz_cmp(begin_1, begin_2);
+    if (!n128_cmp(end_1, end_2)) {
+        res = n128_cmp(begin_1, begin_2);
         *result = (res < 0) ? IP_B_IN_A_OVERLAP
                             : IP_A_IN_B_OVERLAP;
         return;
     }
 
-    res = mpz_cmp(begin_1, begin_2);
+    res = n128_cmp(begin_1, begin_2);
     if (res < 0) {
-        res = mpz_cmp(end_1, begin_2);
+        res = n128_cmp(end_1, begin_2);
         if (res < 0) {
             *result = IP_NO_OVERLAP;
             return;
         }
-        res = mpz_cmp(end_1, end_2);
+        res = n128_cmp(end_1, end_2);
         *result = (res < 0) ? IP_PARTIAL_OVERLAP
                             : IP_B_IN_A_OVERLAP;
         return;
     }
 
-    res = mpz_cmp(end_2, begin_1);
+    res = n128_cmp(end_2, begin_1);
     if (res < 0) {
         *result = IP_NO_OVERLAP;
         return;
     }
 
-    res = mpz_cmp(end_2, end_1);
+    res = n128_cmp(end_2, end_1);
     *result = (res < 0) ? IP_PARTIAL_OVERLAP
                         : IP_A_IN_B_OVERLAP;
 
@@ -936,10 +909,10 @@ NI_ip_is_overlap(const char *begin_1, const char *end_1,
     int b1_len;
     int b2_len;
     int res = 0;
-    mpz_t begin_1_mpz;
-    mpz_t end_1_mpz;
-    mpz_t begin_2_mpz;
-    mpz_t end_2_mpz;
+    n128_t begin_1_n128;
+    n128_t end_1_n128;
+    n128_t begin_2_n128;
+    n128_t end_2_n128;
     unsigned long begin_1_ulong;
     unsigned long begin_2_ulong;
     unsigned long end_1_ulong;
@@ -967,7 +940,7 @@ NI_ip_is_overlap(const char *begin_1, const char *end_1,
         return 0;
     }
 
-    /* IPv4-specific version (avoids using GMP). */
+    /* IPv4-specific version (avoids using N128). */
 
     if (b1_len <= 32) {
         begin_1_ulong = NI_bintoint(begin_1, b1_len);
@@ -979,25 +952,15 @@ NI_ip_is_overlap(const char *begin_1, const char *end_1,
         return 1;
     }
 
-    /* IPv6 version (using GMP). */
+    /* IPv6 version (using N128). */
 
-    mpz_init2(begin_1_mpz, 128);
-    mpz_init2(end_1_mpz,   128);
-    mpz_init2(begin_2_mpz, 128);
-    mpz_init2(end_2_mpz,   128);
+    n128_set_str_binary(&begin_1_n128, begin_1, b1_len);
+    n128_set_str_binary(&begin_2_n128, begin_2, b1_len);
+    n128_set_str_binary(&end_1_n128,   end_1,   b1_len);
+    n128_set_str_binary(&end_2_n128,   end_2,   b1_len);
 
-    NI_ip_bintompz(begin_1, b1_len, &begin_1_mpz);
-    NI_ip_bintompz(begin_2, b1_len, &begin_2_mpz);
-    NI_ip_bintompz(end_1,   b1_len, &end_1_mpz);
-    NI_ip_bintompz(end_2,   b1_len, &end_2_mpz);
-
-    NI_ip_is_overlap_ipv6(begin_1_mpz, end_1_mpz, 
-                          begin_2_mpz, end_2_mpz, result);
-
-    mpz_clear(begin_1_mpz);
-    mpz_clear(end_1_mpz);
-    mpz_clear(begin_2_mpz);
-    mpz_clear(end_2_mpz);
+    NI_ip_is_overlap_ipv6(&begin_1_n128, &end_1_n128, 
+                          &begin_2_n128, &end_2_n128, result);
 
     return 1;
 }
@@ -1008,9 +971,9 @@ NI_ip_is_overlap(const char *begin_1, const char *end_1,
  * @len: the prefix length.
  */
 int
-NI_ip_check_prefix_ipv6(mpz_t ip, int len)
+NI_ip_check_prefix_ipv6(n128_t *ip, int len)
 {
-    mpz_t mask;
+    n128_t mask;
     char buf[IPV6_BITSTR_LEN];
     int i;
 
@@ -1019,22 +982,19 @@ NI_ip_check_prefix_ipv6(mpz_t ip, int len)
         return 0;
     }
 
-    mpz_init2(mask, 128);
-    mpz_set_ui(mask, 0);
-
-    for (i = 0; i < (128 - len); ++i) {
-        mpz_setbit(mask, i);
+    n128_set_ui(&mask, 0);
+    for (i = 0; i < (128 - len); i++) {
+        n128_setbit(&mask, i);
     }
+    n128_and(&mask, ip);
 
-    mpz_and(mask, ip, mask);
-    if (mpz_cmp_ui(mask, 0)) {
-        NI_ip_mpztobin(ip, len, buf);
+    if (n128_cmp_ui(&mask, 0)) {
+        NI_ip_n128tobin(ip, len, buf);
+        buf[len] = '\0';
         NI_set_Error_Errno(171, "Invalid prefix %s/%d", buf, len);
-        mpz_clear(mask);
         return 0;
     }
 
-    mpz_clear(mask);
     return 1;
 }
 
@@ -1097,7 +1057,7 @@ NI_ip_check_prefix(const char *bitstr, int len, int version)
             NI_set_Error_Errno(171, "Invalid prefix %s/%d", bitstr, len);
             return 0;
         }
-        ++c;
+        c++;
     }
 
     if (iplen != NI_iplengths(version)) {
@@ -1122,7 +1082,7 @@ NI_ip_get_prefix_length_ipv4(unsigned long begin, unsigned long end,
     int i;
     int res = 0;
 
-    for (i = 0; i < bits; ++i) {
+    for (i = 0; i < bits; i++) {
         if ((begin & 1) == (end & 1)) {
             res = bits - i;
             break;
@@ -1136,8 +1096,8 @@ NI_ip_get_prefix_length_ipv4(unsigned long begin, unsigned long end,
 
 /**
  * NI_ip_get_prefix_length_ipv6(): get prefix length for a given range.
- * @num1: first IP address as a GMP integer.
- * @num2: second IP address as a GMP integer.
+ * @num1: first IP address as an N128 integer.
+ * @num2: second IP address as an N128 integer.
  * @bits: number of bits to check
  * @len: a pointer to an integer.
  *
@@ -1146,13 +1106,13 @@ NI_ip_get_prefix_length_ipv4(unsigned long begin, unsigned long end,
  * calculated.
  */
 void
-NI_ip_get_prefix_length_ipv6(mpz_t num1, mpz_t num2, int bits, int *len)
+NI_ip_get_prefix_length_ipv6(n128_t *num1, n128_t *num2, int bits, int *len)
 {
     int i;
     int res = 0;
 
-    for (i = 0; i < bits; ++i) {
-        if (mpz_tstbit(num1, i) == mpz_tstbit(num2, i)) {
+    for (i = 0; i < bits; i++) {
+        if (n128_tstbit(num1, i) == n128_tstbit(num2, i)) {
             res = bits - i;
             break;
         }
@@ -1238,28 +1198,15 @@ NI_ip_inttoip_ipv6(unsigned long n1, unsigned long n2,
 }
 
 /**
- * NI_ip_inttoip_mpz(): make IPv6 address from GMP integer.
+ * NI_ip_inttoip_n128(): make IPv6 address from N128 integer.
  * @ip: IP address.
  * @buf: the IP address buffer.
  */
 void
-NI_ip_inttoip_mpz(mpz_t ip, char *buf)
+NI_ip_inttoip_n128(n128_t *ip, char *buf)
 {
-    unsigned long n[4];
-    int i;
-    mpz_t copy;
-
-    mpz_init2(copy, 128);
-    mpz_set(copy, ip);
-
-    for (i = 3; i >= 0; --i) {
-        n[i] = mpz_get_ui(copy);
-        mpz_fdiv_q_2exp(copy, copy, 32);
-    }
-
-    mpz_clear(copy);
-
-    NI_ip_inttoip_ipv6(n[0], n[1], n[2], n[3], buf);
+    NI_ip_inttoip_ipv6(ip->nums[0], ip->nums[1],
+                       ip->nums[2], ip->nums[3], buf);
 }
 
 /**
@@ -1303,14 +1250,14 @@ NI_ip_bintoip(const char *bitstr, int version, char *buf)
         return 1;
     }
 
-    for (i = 0; i < 4; ++i) {
+    for (i = 0; i < 4; i++) {
         nums[i] = 0;
     }
 
     excess = size % 32;
     longs  = (size / 32) + (!excess ? 0 : 1);
 
-    for (i = (4 - longs), j = 0; (i < 4) && (j < 4); ++i, ++j) {
+    for (i = (4 - longs), j = 0; i < 4; i++, j++) {
         bits =
             (i == (4 - longs) && excess)
                 ? excess
@@ -1337,8 +1284,8 @@ NI_ip_bintoip(const char *bitstr, int version, char *buf)
 int
 NI_ip_binadd(const char *ip1, const char *ip2, char *buf, int maxlen)
 {
-    mpz_t num1;
-    mpz_t num2;
+    n128_t num1;
+    n128_t num2;
     int len1;
     int len2;
 
@@ -1353,18 +1300,10 @@ NI_ip_binadd(const char *ip1, const char *ip2, char *buf, int maxlen)
         return 0;
     }
 
-    mpz_init2(num1, len1);
-    mpz_set_str(num1, ip1, 2);
-
-    mpz_init2(num2, len2);
-    mpz_set_str(num2, ip2, 2);
-
-    mpz_add(num1, num1, num2);
-
-    NI_ip_mpztobin(num1, len1, buf);
-
-    mpz_clear(num1);
-    mpz_clear(num2);
+    n128_set_str_binary(&num1, ip1, len1);
+    n128_set_str_binary(&num2, ip2, len2);
+    n128_add(&num1, &num2);
+    NI_ip_n128tobin(&num1, len1, buf);
 
     buf[len2] = '\0';
     return 1;
@@ -1403,16 +1342,12 @@ NI_ip_range_to_prefix_ipv4(unsigned long begin, unsigned long end,
     *pcount = 0;
 
     while (begin <= end) {
-        if (*pcount == 32) {
-            return 0;    
-        }
-
         /* Calculate the number of zeroes that exist on the right of
          * 'begin', and create a mask for that number of bits. */
         zeroes = NI_trailing_zeroes(begin);
         mask = 0;
 
-        for (i = 0; i < (int) zeroes; ++i) {
+        for (i = 0; i < (int) zeroes; i++) {
             mask |= (1 << i);
         }
 
@@ -1467,11 +1402,11 @@ NI_ip_range_to_prefix_ipv4(unsigned long begin, unsigned long end,
  * Will write at most 128 prefix strings to @prefixes.
  */
 int
-NI_ip_range_to_prefix_ipv6(mpz_t begin, mpz_t end,
+NI_ip_range_to_prefix_ipv6(n128_t *begin, n128_t *end,
                            int version, char **prefixes, int *pcount)
 {
-    mpz_t current;
-    mpz_t mask;
+    n128_t current;
+    n128_t mask;
     unsigned long zeroes;
     int iplen;
     unsigned long res;
@@ -1481,15 +1416,12 @@ NI_ip_range_to_prefix_ipv6(mpz_t begin, mpz_t end,
     char tempip[IPV6_BITSTR_LEN];
     char range[4];
 
-    mpz_init2(current, 128);
-    mpz_init2(mask,    128);
-
     iplen = NI_iplengths(version);
 
     tempip[iplen] = '\0';
     *pcount = 0;
 
-    while (mpz_cmp(begin, end) <= 0) {
+    while (n128_cmp(begin, end) <= 0) {
         if (*pcount == 128) {
             return 0;
         }
@@ -1497,58 +1429,54 @@ NI_ip_range_to_prefix_ipv6(mpz_t begin, mpz_t end,
         /* Calculate the number of zeroes that exist on the right of
          * 'begin', and create a mask for that number of bits. */
 
-        zeroes = mpz_scan1(begin, 0);
-        zeroes = (zeroes == ULONG_MAX) ? iplen : (zeroes - 1);
+        zeroes = n128_scan1(begin);
+        zeroes = ((zeroes == INT_MAX) ? (unsigned) iplen : zeroes) - 1;
 
-        mpz_set_ui(mask, 0);
-        for (i = 0; i < ((int) zeroes + 1); ++i) {
-            mpz_setbit(mask, i);
+        n128_set_ui(&mask, 0);
+        for (i = 0; i < ((int) zeroes + 1); i++) {
+            n128_setbit(&mask, i);
         }
 
         /* Find the largest range (from 'begin' to 'current') that
          * does not exceed 'end'. */
 
         do {
-            mpz_set(current, begin);
-            mpz_ior(current, current, mask);
-            mpz_clrbit(mask, zeroes);
-            --zeroes;
-        } while (mpz_cmp(current, end) > 0);
+            n128_set(&current, begin);
+            n128_ior(&current, &mask);
+            n128_clrbit(&mask, zeroes);
+            zeroes--;
+        } while (n128_cmp(&current, end) > 0);
 
         /* Get the prefix length for the range and add the stringified
          * range to @prefixes. */
 
-        NI_ip_get_prefix_length_ipv6(begin, current,
+        NI_ip_get_prefix_length_ipv6(begin, &current,
                                      iplen, &prefix_length);
 
         new_prefix = (char *) malloc(MAX_IPV6_RANGE_STR_LEN);
         if (!new_prefix) {
             printf("NI_ip_range_to_prefix: malloc failed!\n");
-            mpz_clear(current);
-            mpz_clear(mask);
             return 0;
         }
 
         prefixes[(*pcount)++] = new_prefix;
-        NI_ip_mpztobin(begin, iplen, tempip);
+        NI_ip_n128tobin(begin, iplen, tempip);
         NI_ip_bintoip(tempip, version, new_prefix);
         strcat(new_prefix, "/");
         res = snprintf(range, 4, "%d", prefix_length);
         strncat(new_prefix, range, res);
 
-        mpz_add_ui(begin, current, 1);
+        n128_set(begin, &current);
+        n128_add_ui(begin, 1);
 
         /* Do not continue getting prefixes if 'current' completely
          * comprises set bits. */
 
-        res = mpz_scan0(current, 0);
-        if (res == ULONG_MAX) {
+        res = n128_scan0(&current);
+        if (res == INT_MAX) {
             break;
         }
     }
-
-    mpz_clear(current);
-    mpz_clear(mask);
 
     return 1;
 }
@@ -1570,8 +1498,8 @@ int
 NI_ip_range_to_prefix(const char *begin, const char *end,
                       int version, char **prefixes, int *pcount)
 {
-    mpz_t begin_mpz;
-    mpz_t end_mpz;
+    n128_t begin_n128;
+    n128_t end_n128;
     unsigned long begin_ulong;
     unsigned long end_ulong;
     int iplen;
@@ -1599,17 +1527,11 @@ NI_ip_range_to_prefix(const char *begin, const char *end,
                                           version, prefixes, pcount);
     }
 
-    mpz_init2(begin_mpz, 128);
-    mpz_set_str(begin_mpz, begin, 2);
+    n128_set_str_binary(&begin_n128, begin, strlen(begin));
+    n128_set_str_binary(&end_n128,   end,   strlen(end));
 
-    mpz_init2(end_mpz,   128);
-    mpz_set_str(end_mpz,   end,   2);
-
-    res = NI_ip_range_to_prefix_ipv6(begin_mpz, end_mpz,
+    res = NI_ip_range_to_prefix_ipv6(&begin_n128, &end_n128,
                                      version, prefixes, pcount);
-
-    mpz_clear(begin_mpz);
-    mpz_clear(end_mpz);
 
     return res;
 }
@@ -1638,7 +1560,7 @@ NI_ip_aggregate_tail(int res, char **prefixes, int pcount,
     int max;
 
     if (!res) {
-        for (i = 0; i < pcount; ++i) {
+        for (i = 0; i < pcount; i++) {
             free(prefixes[i]);
         }
         return 0;
@@ -1649,7 +1571,7 @@ NI_ip_aggregate_tail(int res, char **prefixes, int pcount,
     }
 
     if (pcount > 1) {
-        for (i = 0; i < pcount; ++i) {
+        for (i = 0; i < pcount; i++) {
             free(prefixes[i]);
         }
         return 161;
@@ -1670,25 +1592,25 @@ NI_ip_aggregate_tail(int res, char **prefixes, int pcount,
 
 /**
  * NI_ip_aggregate_ipv6(): get the aggregate range of two ranges as a string.
- * @begin_1: beginning GMP integer IP address for first range.
- * @end_1: ending GMP integer IP address for first range.
- * @begin_2: beginning GMP integer IP address for second range.
- * @end_2: ending GMP integer IP address for second range.
+ * @begin_1: beginning N128 integer IP address for first range.
+ * @end_1: ending N128 integer IP address for first range.
+ * @begin_2: beginning N128 integer IP address for second range.
+ * @end_2: ending N128 integer IP address for second range.
  * @version: IP address version.
  * @buf: the buffer for the new range.
  *
  * See NI_ip_aggregate().
  */
 int
-NI_ip_aggregate_ipv6(mpz_t b1, mpz_t e1, mpz_t b2, mpz_t e2,
+NI_ip_aggregate_ipv6(n128_t *b1, n128_t *e1, n128_t *b2, n128_t *e2,
                      int version, char *buf)
 {
     char *prefixes[128];
     int pcount;
     int res;
 
-    mpz_add_ui(e1, e1, 1);
-    if (mpz_cmp(e1, b2)) {
+    n128_add_ui(e1, 1);
+    if (n128_cmp(e1, b2)) {
         return 160;
     }
 
@@ -1746,20 +1668,33 @@ NI_ip_aggregate(const char *b1, const char *e1,
                 int version, char *buf)
 {
     int res;
-    mpz_t b1_mpz;
-    mpz_t e1_mpz;
-    mpz_t b2_mpz;
-    mpz_t e2_mpz;
+    int i;
+    n128_t b1_n128;
+    n128_t e1_n128;
+    n128_t b2_n128;
+    n128_t e2_n128;
     unsigned long b1_ulong;
     unsigned long e1_ulong;
     unsigned long b2_ulong;
     unsigned long e2_ulong;
+    const char *addr_args[4];
+    addr_args[0] = b1;
+    addr_args[1] = b2;
+    addr_args[2] = e1;
+    addr_args[3] = e2;
 
     if (!version) {
         NI_set_Error_Errno(101, "Cannot determine IP version for %s",
                                 b1);
         return 0;
     } else if (version == 4) {
+        for (i = 0; i < 4; i++) {
+            if (strlen(addr_args[i]) != 32) {
+                NI_set_Error_Errno(107, "Invalid IP address %s",
+                                   addr_args[i]);
+                return 0;
+            }
+        }
         b1_ulong = NI_bintoint(b1, 32);
         e1_ulong = NI_bintoint(e1, 32);
         b2_ulong = NI_bintoint(b2, 32);
@@ -1767,20 +1702,19 @@ NI_ip_aggregate(const char *b1, const char *e1,
         res = NI_ip_aggregate_ipv4(b1_ulong, e1_ulong, 
                                    b2_ulong, e2_ulong, version, buf);
     } else {
-        mpz_init2(b1_mpz, 128);
-        mpz_init2(e1_mpz, 128);
-        mpz_init2(b2_mpz, 128);
-        mpz_init2(e2_mpz, 128);
-        mpz_set_str(b1_mpz, b1, 2);
-        mpz_set_str(e1_mpz, e1, 2);
-        mpz_set_str(b2_mpz, b2, 2);
-        mpz_set_str(e2_mpz, e2, 2);
-        res = NI_ip_aggregate_ipv6(b1_mpz, e1_mpz, 
-                                   b2_mpz, e2_mpz, version, buf);
-        mpz_clear(b1_mpz);
-        mpz_clear(e1_mpz);
-        mpz_clear(b2_mpz);
-        mpz_clear(e2_mpz);
+        for (i = 0; i < 4; i++) {
+            if (strlen(addr_args[i]) != 128) {
+                NI_set_Error_Errno(108, "Invalid IP address %s",
+                                   addr_args[i]);
+                return 0;
+            }
+        }
+        n128_set_str_binary(&b1_n128, b1, strlen(b1));
+        n128_set_str_binary(&e1_n128, e1, strlen(e1));
+        n128_set_str_binary(&b2_n128, b2, strlen(b2));
+        n128_set_str_binary(&e2_n128, e2, strlen(e2));
+        res = NI_ip_aggregate_ipv6(&b1_n128, &e1_n128, 
+                                   &b2_n128, &e2_n128, version, buf);
     }
 
     if (res == 0) {
@@ -1827,8 +1761,8 @@ NI_ip_iptobin(const char *ip, int ipversion, char *buf)
             return 0;
         }
 
-        for (j = 0; j < 4; ++j) {
-            for (i = 0; i < 8; ++i) {
+        for (j = 0; j < 4; j++) {
+            for (i = 0; i < 8; i++) {
                 buf[(j * 8) + i] =
                     ((ipv4[j] & (1 << (8 - i - 1)))) ? '1' : '0';
             }
@@ -1837,11 +1771,11 @@ NI_ip_iptobin(const char *ip, int ipversion, char *buf)
     } else {
         j = 0;
         ncount = 0;
-        while ((c = ip[j]) && (c != '\0')) {
+        while ((c = ip[j])) {
             if (c != ':') {
-                ++ncount;
+                ncount++;
             }
-            ++j;
+            j++;
         }
         if (ncount != 32) {
             NI_set_Error_Errno(102, "Bad IP address %s", ip);
@@ -1849,16 +1783,19 @@ NI_ip_iptobin(const char *ip, int ipversion, char *buf)
         }
 
         i = -1;
-        for (j = 0; ip[j] != '\0'; ++j) {
+        for (j = 0; ip[j] != '\0'; j++) {
             if (ip[j] == ':') {
                 continue;
             } else {
-                ++i;
+                i++;
             }
 
             y = NI_hdtoi(ip[j]);
+            if (y == -1) {
+                return 0;
+            }
 
-            for (k = 0; k < 4; ++k) {
+            for (k = 0; k < 4; k++) {
                 buf[ (i * 4) + k ] =
                     ((y >> (3 - k)) & 1) ? '1' : '0';
             }
@@ -1912,7 +1849,7 @@ NI_ip_expand_address_ipv6(const char *ip, char *retbuf)
         return 0;
     }
 
-    for (i = 0; i < 4; ++i) {
+    for (i = 0; i < 4; i++) {
         n[i] = (ipv6[(i * 4) + 0] << 24)
              | (ipv6[(i * 4) + 1] << 16)
              | (ipv6[(i * 4) + 2] << 8)
@@ -2018,7 +1955,7 @@ NI_ip_reverse_ipv6(const char *ip, int len, char *buf)
         return 0;
     }
 
-    for (i = (len - 1); i >= 0; --i) {
+    for (i = (len - 1); i >= 0; i--) {
         index = i / 2;
         shift = !(i % 2) * 4;
         sprintf(buf, "%x.", ((ipv6[index] >> shift) & 0xF));
@@ -2092,7 +2029,7 @@ NI_ip_normalize_prefix_ipv4(unsigned long ip, char *slash,
             return 0;
         }
 
-        addcst = (endptr &&  *endptr == ',');
+        addcst = (*endptr == ',');
 
         res = NI_ip_check_prefix_ipv4(current, clen);
         if (!res) {
@@ -2115,7 +2052,7 @@ NI_ip_normalize_prefix_ipv4(unsigned long ip, char *slash,
 
 /**
  * NI_ip_normalize_prefix_ipv6(): get first and last address from prefix range.
- * @ip: IP address (GMP integer).
+ * @ip: IP address (N128 integer).
  * @slash: pointer to first '/' in original string.
  * @ip1buf: first IP address buffer.
  * @ip2buf: second IP address buffer.
@@ -2123,18 +2060,17 @@ NI_ip_normalize_prefix_ipv4(unsigned long ip, char *slash,
  * Both buffers are null-terminated on success.
  */
 int
-NI_ip_normalize_prefix_ipv6(mpz_t ip, char *slash,
+NI_ip_normalize_prefix_ipv6(n128_t *ip, char *slash,
                             char *ip1buf, char *ip2buf)
 {
-    mpz_t current;
+    n128_t current;
     char *endptr = NULL;
     int res;
     int clen   = 0;
     int addcst = 0;
     char c;
 
-    mpz_init2(current, 128);
-    mpz_set(current, ip);
+    n128_set(&current, ip);
 
     for (;;) {
         c = *slash++;
@@ -2146,30 +2082,26 @@ NI_ip_normalize_prefix_ipv6(mpz_t ip, char *slash,
 
         clen = strtol(slash, &endptr, 10);
         if (STRTOL_FAILED(clen, slash, endptr)) {
-            mpz_clear(current);
             return 0;
         }
 
-        addcst = (endptr &&  *endptr == ',');
+        addcst = (*endptr == ',');
 
-        res = NI_ip_check_prefix_ipv6(current, clen);
+        res = NI_ip_check_prefix_ipv6(&current, clen);
         if (!res) {
-            mpz_clear(current);
             return 0;
         }
 
-        NI_ip_last_address_ipv6(current, clen, &current);
+        NI_ip_last_address_ipv6(&current, clen, &current);
 
         if (addcst) {
-            mpz_add_ui(current, current, 1);
+            n128_add_ui(&current, 1);
             slash = endptr + 1;
         }
     }
 
-    NI_ip_inttoip_mpz(ip,      ip1buf);
-    NI_ip_inttoip_mpz(current, ip2buf);
-
-    mpz_clear(current);
+    NI_ip_inttoip_n128(ip,       ip1buf);
+    NI_ip_inttoip_n128(&current, ip2buf);
 
     return 2;
 }
@@ -2194,7 +2126,7 @@ NI_ip_normalize_prefix(char *ip, char *ip1buf, char *ip2buf)
     char *start;
     unsigned char ipnum[16];
     unsigned long ipv4;
-    mpz_t ipv6;
+    n128_t ipv6;
     int ipversion;
 
     i      = 0;
@@ -2202,7 +2134,7 @@ NI_ip_normalize_prefix(char *ip, char *ip1buf, char *ip2buf)
     islash = -1;
     start  = ip;
 
-    while ((c = *ip) && (c != '\0')) {
+    while ((c = *ip)) {
         if (isspace(c)) {
             return -1;
         }
@@ -2210,8 +2142,8 @@ NI_ip_normalize_prefix(char *ip, char *ip1buf, char *ip2buf)
             slash  = ip;
             islash = i;
         }
-        ++i;
-        ++ip;
+        i++;
+        ip++;
     }
 
     if (islash < 1) {
@@ -2229,22 +2161,20 @@ NI_ip_normalize_prefix(char *ip, char *ip1buf, char *ip2buf)
         *slash = '/';
         ipv4 = NI_ip_uchars_to_ulong(ipnum);
         return NI_ip_normalize_prefix_ipv4(ipv4,
-                                          slash,
-                                          ip1buf,
-                                          ip2buf);
+                                           slash,
+                                           ip1buf,
+                                           ip2buf);
     } else if (ipversion == 6) {
         res = inet_pton6(start, ipnum);
         if (!res) {
             return 0;
         }
-        mpz_init2(ipv6, 128);
         *slash = '/';
-        NI_ip_uchars_to_mpz(ipnum, &ipv6);
-        res = NI_ip_normalize_prefix_ipv6(ipv6,
-                                         slash,
-                                         ip1buf,
-                                         ip2buf);
-        mpz_clear(ipv6);
+        NI_ip_uchars_to_n128(ipnum, &ipv6);
+        res = NI_ip_normalize_prefix_ipv6(&ipv6,
+                                          slash,
+                                          ip1buf,
+                                          ip2buf);
         return res;
     } else {
         return 0;
@@ -2277,7 +2207,7 @@ NI_ip_tokenize_on_char(char *str, char separator,
     i = 0;
     hit_separator = 0;
 
-    while ((c = *str) && (c != '\0')) {
+    while ((c = *str)) {
         if (c == separator) {
             hit_separator = 1;
             if (!break_char) {
@@ -2295,22 +2225,22 @@ NI_ip_tokenize_on_char(char *str, char separator,
         } else {
             break_char = NULL;
         }
-        ++str;
-        ++i;
+        str++;
+        i++;
     }
 
     if (!hit_separator) {
         return 0;
     }
 
-    ++str;
+    str++;
     c = *str;
     if (c == '\0') {
         return 0;
     }
 
-    while ((c = *str) && (c != '\0') && (isspace(c))) {
-        ++str;
+    while ((c = *str) && (isspace(c))) {
+        str++;
     }
 
     if (c == '\0') {
@@ -2427,34 +2357,26 @@ int
 NI_ip_normalize_plus_ipv6(char *ip, char *num,
                           char *ipbuf1, char *ipbuf2)
 {
-    int res;
     unsigned char ipnum[16];
-    mpz_t ipv6;
-    mpz_t addnum;
+    n128_t ipv6;
+    n128_t addnum;
+    int res;
 
     res = inet_pton6(ip, ipnum);
     if (!res) {
         return 0;
     }
 
-    mpz_init2(ipv6, 128);
-    mpz_init2(addnum, 128);
+    NI_ip_uchars_to_n128(ipnum, &ipv6);
 
-    NI_ip_uchars_to_mpz(ipnum, &ipv6);
-
-    res = mpz_set_str(addnum, num, 10);
-    if ((res == -1) || (mpz_sizeinbase(addnum, 2) > 128)) {
-        mpz_clear(ipv6);
-        mpz_clear(addnum);
+    res = n128_set_str_decimal(&addnum, num, strlen(num));
+    if (!res) {
         return 0;
     }
 
-    NI_ip_inttoip_mpz(ipv6, ipbuf1);
-    mpz_add(ipv6, ipv6, addnum);
-    NI_ip_inttoip_mpz(ipv6, ipbuf2);
-
-    mpz_clear(ipv6);
-    mpz_clear(addnum);
+    NI_ip_inttoip_n128(&ipv6, ipbuf1);
+    n128_add(&ipv6, &addnum);
+    NI_ip_inttoip_n128(&ipv6, ipbuf2);
 
     return 2;
 }
@@ -2629,7 +2551,7 @@ NI_ip_compress_v4_prefix(const char *ip, int len, char *buf, int maxlen)
             break;
         }
         if (*(c + 1) != '\0') {
-            ++c;
+            c++;
         }
     }
 
@@ -2700,7 +2622,7 @@ NI_ip_compress_address(const char *ip, int version, char *buf)
     largest       = 0;
     largest_index = -1;
 
-    for (i = 0; i < 4; ++i) {
+    for (i = 0; i < 4; i++) {
         /* "The symbol '::' MUST NOT be used to shorten just one 16-bit 0
             field. For example, the representation 2001:db8:0:1:1:1:1:1 is
             correct, but 2001:db8::1:1:1:1:1 is not correct"
@@ -2757,7 +2679,7 @@ NI_ip_splitprefix(const char *prefix, char *ipbuf, int *lenbuf)
         return 0;
     }
 
-    ++c;
+    c++;
     if (*c == '\0') {
         return 0;
     }
@@ -2866,14 +2788,14 @@ NI_ip_is_valid_mask(const char *mask, int version)
 
     while (*c != '\0') {
         if ((*c == '1') && (state == 0)) {
-            ++c;
+            c++;
             continue;
         }
         if (*c == '0') {
             if (state == 0) {
                 state = 1;
             }
-            ++c;
+            c++;
             continue;
         }
         NI_set_Error_Errno(151, "Invalid mask %s", mask);
@@ -2941,7 +2863,7 @@ NI_ip_get_embedded_ipv4(const char *ipv6, char *buf)
     if (c == NULL) {
         c = ipv6;
     } else {
-        ++c;
+        c++;
     }
 
     len = strlen(c);

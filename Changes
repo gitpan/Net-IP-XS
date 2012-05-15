@@ -1,5 +1,14 @@
 Revision history for Net-IP-XS
 
+0.08    12 May 2012
+        - Remove GMP dependency.
+        - Fix NI_ip_aggregate memory error on invalid input.
+        - Change NI_ip_binadd's behaviour on invalid input (non-zeroes
+          treated as ones).
+        - NI_ip_bintoint will now return at most ((1 << 128) - 1).
+        - NI_ip_inttobin's result will now always be either 32 or 128
+          characters in length.
+
 0.07    18 August 2011
         - NI_ip_compress_v4_prefix now matches the behaviour of the
           version from Net::IP (it was returning incorrect results

@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 26;
+use Test::More tests => 29;
 
 use Net::IP::XS qw(ip_is_ipv4 Error Errno);
 
@@ -26,7 +26,9 @@ my @data = (
     [ '1.....2' => 0,
       105, 'Invalid IP address 1.....2' ],
     [ '123..123.123' => 0,
-      106, 'Empty quad in IP address 123..123.123' ]
+      106, 'Empty quad in IP address 123..123.123' ],
+    [ '92233720368547758078' => 0,
+      107, qr/^Invalid quad in IP address 92233720368547758078/ ],
 );
 
 for my $entry (@data) {
@@ -37,7 +39,12 @@ for my $entry (@data) {
         is(Errno(), $errno, 'Got correct errno');
     }
     if (defined $error) {
-        is(Error(), $error, 'Got correct error');
+        if (ref $error) {
+            like(Error(), $error, 'Got correct error');
+        }
+        else {
+            is(Error(), $error, 'Got correct error');
+        }
     }
 }
 

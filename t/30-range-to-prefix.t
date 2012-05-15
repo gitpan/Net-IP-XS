@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 18;
+use Test::More tests => 20;
 
 use Net::IP::XS qw(ip_range_to_prefix
                    ip_iptobin
@@ -196,9 +196,19 @@ is_deeply(\@res, ['aaaa:0000:0000:0000:0000:0000:0000:0000/16'],
 
 @res = ip_range_to_prefix(
     ip_iptobin('0000:0000:0000:0000:0000:0000:0000:0000', 6),
+    ip_iptobin('FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF', 6),
+    6
+);
+
+is_deeply(\@res, ['0000:0000:0000:0000:0000:0000:0000:0000/0'], 
+    'ip_range_to_prefix 9');
+
+@res = ip_range_to_prefix(
+    ip_iptobin('0000:0000:0000:0000:0000:0000:0000:0000', 6),
     ip_iptobin('FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFE', 6),
     6
 );
+
 is_deeply(\@res, [
           '0000:0000:0000:0000:0000:0000:0000:0000/1',
           '8000:0000:0000:0000:0000:0000:0000:0000/2',
@@ -328,6 +338,16 @@ is_deeply(\@res, [
           'ffff:ffff:ffff:ffff:ffff:ffff:ffff:fff8/126',
           'ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffc/127',
           'ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffe/128'
-        ], 'ip_range_to_prefix 9');
+        ], 'ip_range_to_prefix 10');
+
+@res = ip_range_to_prefix(
+    ip_iptobin('FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF', 6),
+    ip_iptobin('FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF', 6),
+    6
+);
+
+is_deeply(\@res, 
+          [ 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff/128' ],
+          'ip_range_to_prefix 11');
 
 1;
