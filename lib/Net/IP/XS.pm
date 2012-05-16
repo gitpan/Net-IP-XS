@@ -6,10 +6,9 @@ use strict;
 use 5.006;
 
 use Math::BigInt;
-use Tie::Hash::Sorted;
 use Tie::Simple;
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
 our $IP_NO_OVERLAP      = 0;
 our $IP_PARTIAL_OVERLAP = 1;
@@ -117,25 +116,6 @@ our %IPv6ranges = (
     '0' x 128         => 'UNSPECIFIED',                  # ::/128
     ('0' x 127) . '1' => 'LOOPBACK'                      # ::1/128
 );
-
-sub sort_by_length
-{
-    my ($hash) = @_;
-
-    [ sort { length($b) <=> length($a) } keys %{$hash} ];
-}
-
-BEGIN {
-    tie %IPv4ranges, 'Tie::Hash::Sorted',
-        'Hash'         => \%IPv4ranges,
-        'Sort_Routine' => \&sort_by_length,
-        'Optimization' => 'keys';
-
-    tie %IPv6ranges, 'Tie::Hash::Sorted',
-        'Hash'         => \%IPv6ranges,
-        'Sort_Routine' => \&sort_by_length,
-        'Optimization' => 'keys';
-};
 
 sub Error       { $ERROR }
 sub Errno       { $ERRNO }

@@ -22,6 +22,5 @@ requires:
   IP::Authority: 0
   Math::BigInt: 0
   Test::More: 0
-  Tie::Hash::Sorted: 0
   Tie::Simple: 0
-version: 0.08
+version: 0.09

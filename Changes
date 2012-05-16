@@ -1,6 +1,15 @@
 Revision history for Net-IP-XS
 
-0.08    12 May 2012
+0.09    16 May 2012
+        - Remove Tie::Hash::Sorted dependency. It was not strictly
+          necessary that the hash always be sorted, and it's more in
+          line with how Net::IP works for it to only sort when
+          NI_ip_iptype is called.
+        - Fix NI_ip_is_ipv4 and NI_ip_is_ipv6 problems (both were
+          writing past the end of an array in some cases).
+        - Add 128-bit integer tests.
+
+0.08    15 May 2012
         - Remove GMP dependency.
         - Fix NI_ip_aggregate memory error on invalid input.
         - Change NI_ip_binadd's behaviour on invalid input (non-zeroes

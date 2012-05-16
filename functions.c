@@ -417,6 +417,10 @@ NI_ip_is_ipv4(const char *str)
     char *endptr;
 
     len = strlen(str);
+    if (!len) {
+        NI_set_Error_Errno(107, "Invalid chars in IP ");
+        return 0;
+    }
 
     /* Contains invalid characters. */
 
@@ -440,15 +444,15 @@ NI_ip_is_ipv4(const char *str)
     }
 
     /* Contains more than four quads (octets). */
-
+    
     for (i = 0; i < len; i++) {
         if (str[i] == '.') {
+            if (quads == 3) {
+                NI_set_Error_Errno(105, "Invalid IP address %s", str);
+                return 0;
+            }
+            quadspots[quads] = i + 1;
             quads++;
-            quadspots[quads - 1] = i + 1;
-        }
-        if (quads > 3) {
-            NI_set_Error_Errno(105, "Invalid IP address %s", str);
-            return 0;
         }
     }
 
@@ -490,7 +494,7 @@ NI_ip_is_ipv6(const char *str)
     int i;
     int len;
     int octs = 0;
-    int octspots[8];
+    int octspots[7];
     int oct_index;
     const char *next_oct;
     const char *cc;
@@ -504,10 +508,10 @@ NI_ip_is_ipv6(const char *str)
 
     for (i = 0; i < len; i++) {
         if (str[i] == ':') {
-            octspots[octs++] = i + 1;
-            if (octs > 8) {
+            if (octs == 7) {
                 return 0;
             }
+            octspots[octs++] = i + 1;
         }
     }
 
@@ -2719,6 +2723,7 @@ NI_ip_iptype(const char *ip, int version, char *buf)
     I32 keylen;
     SV *value;
     STRLEN len;
+    int current_keylen;
     char *typestr;
 
     hash = get_hv(
@@ -2730,19 +2735,26 @@ NI_ip_iptype(const char *ip, int version, char *buf)
     }
 
     hv_iterinit(hash);
+    current_keylen = 0;
 
     while ((entry = hv_iternext(hash))) {
         key = hv_iterkey(entry, &keylen);
-        if (!strncmp(key, ip, keylen)) {
-            value = hv_iterval(hash, entry);
-            typestr = SvPV(value, len);
-            if (len > (MAX_TYPE_STR_LEN - 1)) {
-                len = (MAX_TYPE_STR_LEN - 1);
+        if (keylen > current_keylen) {
+            if (!strncmp(key, ip, keylen)) {
+                current_keylen = keylen;
+                value = hv_iterval(hash, entry);
+                typestr = SvPV(value, len);
+                if (len > (MAX_TYPE_STR_LEN - 1)) {
+                    len = (MAX_TYPE_STR_LEN - 1);
+                }
+                memcpy(buf, typestr, len);
+                buf[len] = '\0';
             }
-            memcpy(buf, typestr, len);
-            buf[len] = '\0';
-            return 1;
         }
+    }
+
+    if (current_keylen) {
+        return 1;
     }
 
     if (version == 4) {

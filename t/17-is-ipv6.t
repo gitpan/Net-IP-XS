@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 
-use Test::More tests => 19;
+use Test::More tests => 21;
 
 use Net::IP::XS qw(ip_is_ipv6 Error Errno);
 
@@ -36,10 +36,14 @@ $res = ip_is_ipv6('GGGG:FFFF');
 is($res, 0, 'ip_is_ipv6 invalid (bad characters)');
 is(Errno(), 108, 'Correct errno');
 
+$res = ip_is_ipv6('1:2:3:4:5:6:7:8:9');
+is($res, 0, 'ip_is_ipv6 invalid (too many colons 1)');
+
 $res = ip_is_ipv6('1:2:3:4:5:6:7:8:9:0:1:2:3');
-is($res, 0, 'ip_is_ipv6 invalid (too many colons)');
+is($res, 0, 'ip_is_ipv6 invalid (too many colons 2)');
 
 my @data = (
+    ['1:2:3:4:5:6:7:8' => 1],
     ['1234::5678' => 1],
     ['1234:5678:9ABC:DEF0:1234:5678:9ABC:DEF0' => 1],
     ['::123.123.123.123' => 1],

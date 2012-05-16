@@ -12,8 +12,7 @@ my $output = WriteMakefile(
     PERL_MALLOC_OK => 1,
     OBJECT         => '$(O_FILES)',
     clean          => { FILES => '$(O_FILES)' },
-    PREREQ_PM      => { 'Tie::Hash::Sorted'   => 0,
-                        'Tie::Simple'         => 0,
+    PREREQ_PM      => { 'Tie::Simple'         => 0,
                         'Math::BigInt'        => 0,
                         'IP::Authority'       => 0,
                         # Test prereqs.

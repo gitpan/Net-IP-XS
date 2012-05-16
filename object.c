@@ -1443,7 +1443,6 @@ NI_ip_add_num(SV *ipo, const char *num)
     HV *stash;
     HV *hash;
     SV *ref;
-    int size;
 
     version = NI_hv_get_iv(ipo, "ipversion", 9);
 

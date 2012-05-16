@@ -16,6 +16,7 @@ README
 t/00-load.t
 t/01-pod.t
 t/10-basic.t
+t/10-n128.t
 t/11-iptobin.t
 t/12-iplengths.t
 t/13-bintoip.t
