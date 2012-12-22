@@ -8,7 +8,7 @@ use 5.006;
 use Math::BigInt;
 use Tie::Simple;
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 our $IP_NO_OVERLAP      = 0;
 our $IP_PARTIAL_OVERLAP = 1;
@@ -212,7 +212,7 @@ __END__
 
 =head1 NAME
 
-Net::IP::XS - XS implementation of Net::IP
+Net::IP::XS - IPv4/IPv6 address library
 
 =head1 SYNOPSIS
 
@@ -232,9 +232,9 @@ Net::IP::XS - XS implementation of Net::IP
 
 =head1 DESCRIPTION
 
-An XS implementation of L<Net::IP|Net::IP>. See L<Net::IP|Net::IP>'s
-documentation (as at version 1.25) for the functions and methods that
-are available.
+An XS (C) implementation of L<Net::IP|Net::IP>. See
+L<Net::IP|Net::IP>'s documentation (as at version 1.25) for the
+functions and methods that are available.
 
 =head1 DIFFERENCES BETWEEN NET::IP AND NET::IP::XS
 

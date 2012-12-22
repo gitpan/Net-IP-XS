@@ -53,5 +53,4 @@ t/43-ip-add-num-v4.t
 t/44-ip-add-num-v6.t
 t/45-short.t
 t/46-wrong-object.t
-META.yml                                 Module YAML meta-data (added by MakeMaker)
-META.json                                Module JSON meta-data (added by MakeMaker)
+META.yml                                 Module meta-data (added by MakeMaker)
