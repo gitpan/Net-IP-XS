@@ -1,7 +1,7 @@
 /*
 functions.c - Core functions for Net::IP::XS.
 
-Copyright (C) 2010-2012 Tom Harrison <tomhrr@cpan.org>
+Copyright (C) 2010-2014 Tom Harrison <tomhrr@cpan.org>
 Original inet_pton4, inet_pton6 are Copyright (C) 2006 Free Software
 Foundation.
 Original interface, and the auth and ip_auth functions, are Copyright
@@ -496,19 +496,24 @@ NI_ip_is_ipv6(const char *str)
     int octs = 0;
     int octspots[7];
     int oct_index;
+    const char *double_colon;
     const char *next_oct;
     const char *cc;
     int count;
     int is_hd;
+    int max_colons;
 
     len = strlen(str);
+
+    double_colon = strstr(str, "::");
+    max_colons = (double_colon == NULL) ? 7 : 8;
 
     /* Store a pointer to the next character after each ':' in
      * octspots. */
 
     for (i = 0; i < len; i++) {
         if (str[i] == ':') {
-            if (octs == 7) {
+            if (octs == max_colons) {
                 return 0;
             }
             octspots[octs++] = i + 1;
@@ -580,10 +585,16 @@ NI_ip_is_ipv6(const char *str)
 
     /* Contains more than one '::'. */
 
-    next_oct = strstr(str, "::");
-    if ((next_oct != NULL) && (strstr(next_oct + 1, "::"))) {
+    if ((double_colon != NULL) && (strstr(double_colon + 1, "::"))) {
         NI_set_Error_Errno(111, "Invalid address %s "
                                 "(More than one :: pattern)", str);
+        return 0;
+    }
+
+    /* Doesn't contain '::', though it has fewer than eight segments. */
+
+    if ((octs != 7) && (double_colon == NULL)) {
+        NI_set_Error_Errno(112, "Invalid number of octets %s",  str);
         return 0;
     }
 
