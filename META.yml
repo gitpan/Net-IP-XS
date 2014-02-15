@@ -25,4 +25,4 @@ requires:
   Tie::Simple: 0
 resources:
   repository: https://github.com/tomhrr/p5-Net-IP-XS
-version: 0.12
+version: 0.13
